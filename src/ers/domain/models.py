@@ -1,0 +1,148 @@
+from typing import Optional
+
+# TODO: replace with actual imports from package once released
+from ere.models.core import ClusterReference
+from ere.models.ers import (
+    Decision,
+    DecisionAction,
+    DecisionStatus,
+)
+
+from ers.domain.exceptions import (
+    InvalidClusterError,
+    InvalidStateTransitionError,
+    NoCandidatesError,
+)
+from ers.domain.utils import utc_now
+
+
+class CurationDecision(Decision):
+    """Domain entity extending Decision with curation business logic.
+
+    This class wraps the LinkML-generated Decision model and adds
+    domain behavior for state transitions and validation rules.
+    """
+
+    @property
+    def is_pending_review(self) -> bool:
+        return self.status == DecisionStatus.PENDING_MANUAL_REVIEW
+
+    @property
+    def is_manually_reviewed(self) -> bool:
+        return self.status == DecisionStatus.MANUALLY_REVIEWED
+
+    @property
+    def is_auto_confident(self) -> bool:
+        return self.status == DecisionStatus.AUTOMATIC_CONFIDENT
+
+    @property
+    def top_candidate(self) -> Optional[ClusterReference]:
+        if not self.candidates:
+            return None
+        return max(self.candidates, key=lambda c: c.confidenceScore)
+
+    def _validate_can_curate(self, action: DecisionAction) -> None:
+        """Validate that the decision can be curated with the given action."""
+        if not self.is_pending_review:
+            raise InvalidStateTransitionError(
+                current_status=self.status,
+                attempted_action=action.value,
+            )
+
+    def _find_candidate_by_cluster_id(
+        self, cluster_id: str
+    ) -> Optional[ClusterReference]:
+        """Find a candidate by cluster ID."""
+        for candidate in self.candidates:
+            if candidate.clusterId == cluster_id:
+                return candidate
+        return None
+
+    def accept(self) -> "CurationDecision":
+        """Accept the top candidate as the resolution.
+
+        Returns a new CurationDecision with updated state.
+
+        Raises:
+            InvalidStateTransitionError: If decision is not pending review.
+            NoCandidatesError: If there are no candidates to accept.
+        """
+        self._validate_can_curate(DecisionAction.ACCEPT_TOP)
+
+        top = self.top_candidate
+        if top is None:
+            raise NoCandidatesError(self.id)
+        return CurationDecision(
+            id=self.id,
+            aboutEntityMention=self.aboutEntityMention,
+            candidates=self.candidates,
+            status=DecisionStatus.MANUALLY_REVIEWED,
+            action=DecisionAction.ACCEPT_TOP,
+            acceptedCandidate=top,
+            createdAt=self.createdAt,
+            updatedAt=utc_now(),
+        )
+
+    def reject(self) -> "CurationDecision":
+        """Reject all candidates.
+
+        Returns a new CurationDecision with updated state.
+
+        Raises:
+            InvalidStateTransitionError: If decision is not pending review.
+        """
+        self._validate_can_curate(DecisionAction.REJECT_ALL)
+
+        return CurationDecision(
+            id=self.id,
+            aboutEntityMention=self.aboutEntityMention,
+            candidates=self.candidates,
+            status=DecisionStatus.MANUALLY_REVIEWED,
+            action=DecisionAction.REJECT_ALL,
+            acceptedCandidate=None,
+            createdAt=self.createdAt,
+            updatedAt=utc_now(),
+        )
+
+    def assign(self, cluster_id: str) -> "CurationDecision":
+        """Assign the entity to an alternative cluster.
+
+        Args:
+            cluster_id: The ID of the cluster to assign to.
+
+        Returns a new CurationDecision with updated state.
+
+        Raises:
+            InvalidStateTransitionError: If decision is not pending review.
+            InvalidClusterError: If cluster_id is not in candidates.
+        """
+        self._validate_can_curate(DecisionAction.ACCEPT_ALTERNATIVE)
+
+        candidate = self._find_candidate_by_cluster_id(cluster_id)
+        if candidate is None:
+            raise InvalidClusterError(cluster_id, self.id)
+
+        return CurationDecision(
+            id=self.id,
+            aboutEntityMention=self.aboutEntityMention,
+            candidates=self.candidates,
+            status=DecisionStatus.MANUALLY_REVIEWED,
+            action=DecisionAction.ACCEPT_ALTERNATIVE,
+            acceptedCandidate=candidate,
+            createdAt=self.createdAt,
+            updatedAt=utc_now(),
+        )
+
+    @classmethod
+    def from_decision(cls, decision: Decision) -> "CurationDecision":
+        """Create a CurationDecision from a base Decision model."""
+        return cls(
+            id=decision.id,
+            aboutEntityMention=decision.aboutEntityMention,
+            candidates=decision.candidates,
+            status=decision.status,
+            action=decision.action,
+            acceptedCandidate=decision.acceptedCandidate,
+            createdAt=decision.createdAt,
+            updatedAt=decision.updatedAt,
+        )
