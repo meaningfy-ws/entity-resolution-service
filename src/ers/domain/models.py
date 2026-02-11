@@ -3,6 +3,8 @@ from typing import Optional
 # TODO: replace with actual imports from package once released
 from ere.models.core import ClusterReference
 from ere.models.ers import (
+    AuditAction,
+    AuditLog,
     Decision,
     DecisionAction,
     DecisionStatus,
@@ -13,7 +15,7 @@ from ers.domain.exceptions import (
     InvalidStateTransitionError,
     NoCandidatesError,
 )
-from ers.domain.utils import utc_now
+from ers.domain.utils import utc_now, serialize_to_json
 
 
 class CurationDecision(Decision):
@@ -145,4 +147,82 @@ class CurationDecision(Decision):
             acceptedCandidate=decision.acceptedCandidate,
             createdAt=decision.createdAt,
             updatedAt=decision.updatedAt,
+        )
+
+
+class CurationAuditLog(AuditLog):
+    """Domain entity extending AuditLog with factory methods.
+
+    Provides convenient factory methods for creating audit entries
+    for different curation actions.
+    """
+
+    @classmethod
+    def for_accept(
+        cls,
+        audit_id: str,
+        actor: str,
+        decision: CurationDecision,
+    ) -> "CurationAuditLog":
+        """Create an audit log entry for an accept action."""
+        changes = {
+            "accepted_cluster_id": (
+                decision.acceptedCandidate.clusterId
+                if decision.acceptedCandidate
+                else None
+            ),
+        }
+        return cls(
+            id=audit_id,
+            actor=actor,
+            action=AuditAction.ACCEPT,
+            instanceType="Decision",
+            instanceId=decision.id,
+            changes=serialize_to_json(changes),
+            createdAt=utc_now(),
+        )
+
+    @classmethod
+    def for_reject(
+        cls,
+        audit_id: str,
+        actor: str,
+        decision: CurationDecision,
+    ) -> "CurationAuditLog":
+        """Create an audit log entry for a reject action."""
+        return cls(
+            id=audit_id,
+            actor=actor,
+            action=AuditAction.REJECT,
+            instanceType="Decision",
+            instanceId=decision.id,
+            changes=None,
+            createdAt=utc_now(),
+        )
+
+    @classmethod
+    def for_assign(
+        cls,
+        audit_id: str,
+        actor: str,
+        decision: CurationDecision,
+        from_cluster_id: Optional[str],
+    ) -> "CurationAuditLog":
+        """Create an audit log entry for an assign action."""
+        changes = {
+            "from_cluster_id": from_cluster_id,
+            "to_cluster_id": (
+                decision.acceptedCandidate.clusterId
+                if decision.acceptedCandidate
+                else None
+            ),
+        }
+        return cls(
+            id=audit_id,
+            actor=actor,
+            action=AuditAction.ASSIGN,
+            instanceType="Decision",
+            instanceId=decision.id,
+            changes=serialize_to_json(changes),
+            createdAt=utc_now(),
         )
