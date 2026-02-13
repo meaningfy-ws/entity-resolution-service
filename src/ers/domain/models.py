@@ -1,10 +1,10 @@
 from typing import Optional
 
 # TODO: replace with actual imports from package once released
-from ere.models.core import ClusterReference
-from ere.models.ers import (
+from erspec.models.core import (
     AuditAction,
     AuditLog,
+    ClusterReference,
     Decision,
     DecisionAction,
     DecisionStatus,
@@ -41,7 +41,7 @@ class CurationDecision(Decision):
     def top_candidate(self) -> Optional[ClusterReference]:
         if not self.candidates:
             return None
-        return max(self.candidates, key=lambda c: c.confidenceScore)
+        return max(self.candidates, key=lambda c: c.confidence_score)
 
     def _validate_can_curate(self, action: DecisionAction) -> None:
         """Validate that the decision can be curated with the given action."""
@@ -56,7 +56,7 @@ class CurationDecision(Decision):
     ) -> Optional[ClusterReference]:
         """Find a candidate by cluster ID."""
         for candidate in self.candidates:
-            if candidate.clusterId == cluster_id:
+            if candidate.cluster_id == cluster_id:
                 return candidate
         return None
 
@@ -76,13 +76,13 @@ class CurationDecision(Decision):
             raise NoCandidatesError(self.id)
         return CurationDecision(
             id=self.id,
-            aboutEntityMention=self.aboutEntityMention,
+            about_entity_mention=self.about_entity_mention,
             candidates=self.candidates,
             status=DecisionStatus.MANUALLY_REVIEWED,
             action=DecisionAction.ACCEPT_TOP,
-            acceptedCandidate=top,
-            createdAt=self.createdAt,
-            updatedAt=utc_now(),
+            accepted_candidate=top,
+            created_at=self.created_at,
+            updated_at=utc_now(),
         )
 
     def reject(self) -> "CurationDecision":
@@ -97,13 +97,13 @@ class CurationDecision(Decision):
 
         return CurationDecision(
             id=self.id,
-            aboutEntityMention=self.aboutEntityMention,
+            about_entity_mention=self.about_entity_mention,
             candidates=self.candidates,
             status=DecisionStatus.MANUALLY_REVIEWED,
             action=DecisionAction.REJECT_ALL,
-            acceptedCandidate=None,
-            createdAt=self.createdAt,
-            updatedAt=utc_now(),
+            accepted_candidate=None,
+            created_at=self.created_at,
+            updated_at=utc_now(),
         )
 
     def assign(self, cluster_id: str) -> "CurationDecision":
@@ -126,13 +126,13 @@ class CurationDecision(Decision):
 
         return CurationDecision(
             id=self.id,
-            aboutEntityMention=self.aboutEntityMention,
+            about_entity_mention=self.about_entity_mention,
             candidates=self.candidates,
             status=DecisionStatus.MANUALLY_REVIEWED,
             action=DecisionAction.ACCEPT_ALTERNATIVE,
-            acceptedCandidate=candidate,
-            createdAt=self.createdAt,
-            updatedAt=utc_now(),
+            accepted_candidate=candidate,
+            created_at=self.created_at,
+            updated_at=utc_now(),
         )
 
     @classmethod
@@ -140,13 +140,13 @@ class CurationDecision(Decision):
         """Create a CurationDecision from a base Decision model."""
         return cls(
             id=decision.id,
-            aboutEntityMention=decision.aboutEntityMention,
+            about_entity_mention=decision.about_entity_mention,
             candidates=decision.candidates,
             status=decision.status,
             action=decision.action,
-            acceptedCandidate=decision.acceptedCandidate,
-            createdAt=decision.createdAt,
-            updatedAt=decision.updatedAt,
+            accepted_candidate=decision.accepted_candidate,
+            created_at=decision.created_at,
+            updated_at=decision.updated_at,
         )
 
 
@@ -167,8 +167,8 @@ class CurationAuditLog(AuditLog):
         """Create an audit log entry for an accept action."""
         changes = {
             "accepted_cluster_id": (
-                decision.acceptedCandidate.clusterId
-                if decision.acceptedCandidate
+                decision.accepted_candidate.cluster_id
+                if decision.accepted_candidate
                 else None
             ),
         }
@@ -176,10 +176,10 @@ class CurationAuditLog(AuditLog):
             id=audit_id,
             actor=actor,
             action=AuditAction.ACCEPT,
-            instanceType="Decision",
-            instanceId=decision.id,
+            instance_type="Decision",
+            instance_id=decision.id,
             changes=serialize_to_json(changes),
-            createdAt=utc_now(),
+            created_at=utc_now(),
         )
 
     @classmethod
@@ -194,10 +194,10 @@ class CurationAuditLog(AuditLog):
             id=audit_id,
             actor=actor,
             action=AuditAction.REJECT,
-            instanceType="Decision",
-            instanceId=decision.id,
+            instance_type="Decision",
+            instance_id=decision.id,
             changes=None,
-            createdAt=utc_now(),
+            created_at=utc_now(),
         )
 
     @classmethod
@@ -212,8 +212,8 @@ class CurationAuditLog(AuditLog):
         changes = {
             "from_cluster_id": from_cluster_id,
             "to_cluster_id": (
-                decision.acceptedCandidate.clusterId
-                if decision.acceptedCandidate
+                decision.accepted_candidate.cluster_id
+                if decision.accepted_candidate
                 else None
             ),
         }
@@ -221,8 +221,8 @@ class CurationAuditLog(AuditLog):
             id=audit_id,
             actor=actor,
             action=AuditAction.ASSIGN,
-            instanceType="Decision",
-            instanceId=decision.id,
+            instance_type="Decision",
+            instance_id=decision.id,
             changes=serialize_to_json(changes),
-            createdAt=utc_now(),
+            created_at=utc_now(),
         )

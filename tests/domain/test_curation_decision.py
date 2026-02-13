@@ -1,7 +1,7 @@
 import pytest
 
 # TODO: replace with actual package imports once released
-from ere.models.ers import DecisionAction, DecisionStatus
+from erspec.models.core import DecisionAction, DecisionStatus
 from ers.domain.exceptions import (
     InvalidClusterError,
     InvalidStateTransitionError,
@@ -13,13 +13,13 @@ from tests.factories import ClusterReferenceFactory, CurationDecisionFactory
 class TestCurationDecisionTopCandidate:
     def test_top_candidate_returns_highest_confidence(self):
         candidates = [
-            ClusterReferenceFactory.build(confidenceScore=0.5),
-            ClusterReferenceFactory.build(confidenceScore=0.9),
-            ClusterReferenceFactory.build(confidenceScore=0.7),
+            ClusterReferenceFactory.build(confidence_score=0.5),
+            ClusterReferenceFactory.build(confidence_score=0.9),
+            ClusterReferenceFactory.build(confidence_score=0.7),
         ]
         decision = CurationDecisionFactory.build(candidates=candidates)
 
-        assert decision.top_candidate.confidenceScore == 0.9
+        assert decision.top_candidate.confidence_score == 0.9
 
     def test_top_candidate_returns_none_when_no_candidates(self):
         decision = CurationDecisionFactory.build(candidates=[])
@@ -27,7 +27,7 @@ class TestCurationDecisionTopCandidate:
         assert decision.top_candidate is None
 
     def test_top_candidate_with_single_candidate(self):
-        candidate = ClusterReferenceFactory.build(confidenceScore=0.6)
+        candidate = ClusterReferenceFactory.build(confidence_score=0.6)
         decision = CurationDecisionFactory.build(candidates=[candidate])
 
         assert decision.top_candidate == candidate
@@ -53,7 +53,7 @@ class TestCurationDecisionAccept:
     ):
         result = pending_decision_with_candidates.accept()
 
-        assert result.acceptedCandidate.confidenceScore == 0.9
+        assert result.accepted_candidate.confidence_score == 0.9
 
     def test_accept_returns_new_instance(self, pending_decision_with_candidates):
         result = pending_decision_with_candidates.accept()
@@ -111,7 +111,7 @@ class TestCurationDecisionReject:
     def test_reject_when_pending_has_no_accepted_candidate(self, pending_decision):
         result = pending_decision.reject()
 
-        assert result.acceptedCandidate is None
+        assert result.accepted_candidate is None
 
     def test_reject_when_already_reviewed_raises_invalid_state_transition(
         self, reviewed_decision
@@ -133,7 +133,7 @@ class TestCurationDecisionAssign:
     def test_assign_when_pending_sets_status_to_manually_reviewed(
         self, pending_decision_with_candidates
     ):
-        target_cluster_id = pending_decision_with_candidates.candidates[1].clusterId
+        target_cluster_id = pending_decision_with_candidates.candidates[1].cluster_id
 
         result = pending_decision_with_candidates.assign(target_cluster_id)
 
@@ -142,7 +142,7 @@ class TestCurationDecisionAssign:
     def test_assign_when_pending_sets_action_to_accept_alternative(
         self, pending_decision_with_candidates
     ):
-        target_cluster_id = pending_decision_with_candidates.candidates[1].clusterId
+        target_cluster_id = pending_decision_with_candidates.candidates[1].cluster_id
 
         result = pending_decision_with_candidates.assign(target_cluster_id)
 
@@ -153,9 +153,9 @@ class TestCurationDecisionAssign:
     ):
         target_cluster = pending_decision_with_candidates.candidates[1]
 
-        result = pending_decision_with_candidates.assign(target_cluster.clusterId)
+        result = pending_decision_with_candidates.assign(target_cluster.cluster_id)
 
-        assert result.acceptedCandidate == target_cluster
+        assert result.accepted_candidate == target_cluster
 
     def test_assign_with_invalid_cluster_raises_invalid_cluster_error(
         self, pending_decision_with_candidates

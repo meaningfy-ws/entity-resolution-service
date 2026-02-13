@@ -3,8 +3,7 @@ from datetime import datetime, timezone
 from polyfactory.factories.pydantic_factory import ModelFactory
 
 # TODO: replace with actual package imports once released
-from ere.models.core import ClusterReference, EntityMentionIdentifier
-from ere.models.ers import DecisionStatus
+from erspec.models.core import ClusterReference, DecisionStatus, EntityMentionIdentifier
 from ers.domain.models import CurationDecision
 
 
