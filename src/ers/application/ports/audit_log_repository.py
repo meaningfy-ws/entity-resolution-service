@@ -1,6 +1,8 @@
-from ers.application.ports.repositories import WriteRepository
+from ers.application.ports.repositories import AsyncWriteRepository
 from ers.domain.models import CurationAuditLog
 
 
-class AuditLogRepository(WriteRepository[CurationAuditLog, str]):
+class AuditLogRepository(AsyncWriteRepository[CurationAuditLog, str]):
     """Repository for persisting audit log entries."""
+
+    pass
