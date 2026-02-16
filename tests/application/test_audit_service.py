@@ -20,7 +20,7 @@ def audit_service(audit_log_repository: MagicMock) -> AuditService:
 
 
 class TestLogAccept:
-    def test_log_accept_creates_and_saves_audit_entry(
+    async def test_log_accept_creates_and_saves_audit_entry(
         self,
         audit_service: AuditService,
         audit_log_repository: MagicMock,
@@ -32,7 +32,7 @@ class TestLogAccept:
             accepted_candidate=top_candidate,
         )
 
-        audit_service.log_accept(actor="curator-1", decision=decision)
+        await audit_service.log_accept(actor="curator-1", decision=decision)
 
         audit_log_repository.save.assert_called_once()
         saved_log: CurationAuditLog = audit_log_repository.save.call_args[0][0]
@@ -43,7 +43,7 @@ class TestLogAccept:
 
 
 class TestLogReject:
-    def test_log_reject_creates_and_saves_audit_entry(
+    async def test_log_reject_creates_and_saves_audit_entry(
         self,
         audit_service: AuditService,
         audit_log_repository: MagicMock,
@@ -53,7 +53,7 @@ class TestLogReject:
             action=DecisionAction.REJECT_ALL,
         )
 
-        audit_service.log_reject(actor="curator-1", decision=decision)
+        await audit_service.log_reject(actor="curator-1", decision=decision)
 
         audit_log_repository.save.assert_called_once()
         saved_log: CurationAuditLog = audit_log_repository.save.call_args[0][0]
@@ -63,7 +63,7 @@ class TestLogReject:
 
 
 class TestLogAssign:
-    def test_log_assign_creates_and_saves_audit_entry(
+    async def test_log_assign_creates_and_saves_audit_entry(
         self,
         audit_service: AuditService,
         audit_log_repository: MagicMock,
@@ -75,7 +75,7 @@ class TestLogAssign:
             accepted_candidate=target,
         )
 
-        audit_service.log_assign(
+        await audit_service.log_assign(
             actor="curator-1",
             decision=decision,
             from_cluster_id="old-cluster-id",

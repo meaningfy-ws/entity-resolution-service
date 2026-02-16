@@ -36,7 +36,7 @@ def service(
 
 
 class TestListDecisions:
-    def test_list_decisions_delegates_to_repository(
+    async def test_list_decisions_delegates_to_repository(
         self,
         service: DecisionCurationService,
         decision_repository: MagicMock,
@@ -45,7 +45,7 @@ class TestListDecisions:
         expected = PaginatedResult(count=0, previous=None, next=None, results=[])
         decision_repository.find_with_filters.return_value = expected
 
-        result = service.list_decisions(filters=filters, page=1, per_page=20)
+        result = await service.list_decisions(filters=filters, page=1, per_page=20)
 
         assert result == expected
         decision_repository.find_with_filters.assert_called_once_with(
@@ -54,7 +54,7 @@ class TestListDecisions:
 
 
 class TestGetDecision:
-    def test_get_decision_returns_decision(
+    async def test_get_decision_returns_decision(
         self,
         service: DecisionCurationService,
         decision_repository: MagicMock,
@@ -62,11 +62,11 @@ class TestGetDecision:
         decision = CurationDecisionFactory.build()
         decision_repository.find_by_id.return_value = decision
 
-        result = service.get_decision(decision.id)
+        result = await service.get_decision(decision.id)
 
         assert result == decision
 
-    def test_get_decision_not_found_raises_error(
+    async def test_get_decision_not_found_raises_error(
         self,
         service: DecisionCurationService,
         decision_repository: MagicMock,
@@ -74,14 +74,14 @@ class TestGetDecision:
         decision_repository.find_by_id.return_value = None
 
         with pytest.raises(NotFoundError) as exc_info:
-            service.get_decision("nonexistent-id")
+            await service.get_decision("nonexistent-id")
 
         assert exc_info.value.entity_type == "Decision"
         assert exc_info.value.entity_id == "nonexistent-id"
 
 
 class TestAcceptDecision:
-    def test_accept_decision_saves_and_logs(
+    async def test_accept_decision_saves_and_logs(
         self,
         service: DecisionCurationService,
         decision_repository: MagicMock,
@@ -92,7 +92,7 @@ class TestAcceptDecision:
         )
         decision_repository.find_by_id.return_value = decision
 
-        result = service.accept_decision(decision.id, actor="curator-1")
+        result = await service.accept_decision(decision.id, actor="curator-1")
 
         assert result.status == DecisionStatus.MANUALLY_REVIEWED
         assert result.action == DecisionAction.ACCEPT_TOP
@@ -101,7 +101,7 @@ class TestAcceptDecision:
             actor="curator-1", decision=result
         )
 
-    def test_accept_decision_not_found_raises_error(
+    async def test_accept_decision_not_found_raises_error(
         self,
         service: DecisionCurationService,
         decision_repository: MagicMock,
@@ -110,12 +110,12 @@ class TestAcceptDecision:
         decision_repository.find_by_id.return_value = None
 
         with pytest.raises(NotFoundError):
-            service.accept_decision("nonexistent-id", actor="curator-1")
+            await service.accept_decision("nonexistent-id", actor="curator-1")
 
         decision_repository.save.assert_not_called()
         audit_service.log_accept.assert_not_called()
 
-    def test_accept_decision_invalid_state_propagates(
+    async def test_accept_decision_invalid_state_propagates(
         self,
         service: DecisionCurationService,
         decision_repository: MagicMock,
@@ -127,14 +127,14 @@ class TestAcceptDecision:
         decision_repository.find_by_id.return_value = decision
 
         with pytest.raises(InvalidStateTransitionError):
-            service.accept_decision(decision.id, actor="curator-1")
+            await service.accept_decision(decision.id, actor="curator-1")
 
         decision_repository.save.assert_not_called()
         audit_service.log_accept.assert_not_called()
 
 
 class TestRejectDecision:
-    def test_reject_decision_saves_and_logs(
+    async def test_reject_decision_saves_and_logs(
         self,
         service: DecisionCurationService,
         decision_repository: MagicMock,
@@ -145,7 +145,7 @@ class TestRejectDecision:
         )
         decision_repository.find_by_id.return_value = decision
 
-        result = service.reject_decision(decision.id, actor="curator-1")
+        result = await service.reject_decision(decision.id, actor="curator-1")
 
         assert result.status == DecisionStatus.MANUALLY_REVIEWED
         assert result.action == DecisionAction.REJECT_ALL
@@ -154,7 +154,7 @@ class TestRejectDecision:
             actor="curator-1", decision=result
         )
 
-    def test_reject_decision_not_found_raises_error(
+    async def test_reject_decision_not_found_raises_error(
         self,
         service: DecisionCurationService,
         decision_repository: MagicMock,
@@ -162,11 +162,11 @@ class TestRejectDecision:
         decision_repository.find_by_id.return_value = None
 
         with pytest.raises(NotFoundError):
-            service.reject_decision("nonexistent-id", actor="curator-1")
+            await service.reject_decision("nonexistent-id", actor="curator-1")
 
 
 class TestAssignDecision:
-    def test_assign_decision_saves_and_logs(
+    async def test_assign_decision_saves_and_logs(
         self,
         service: DecisionCurationService,
         decision_repository: MagicMock,
@@ -175,7 +175,7 @@ class TestAssignDecision:
         target = ClusterReferenceFactory.build(confidence_score=0.5)
         decision = CurationDecisionFactory.build(
             status=DecisionStatus.PENDING_MANUAL_REVIEW,
-            accepted_candidate=ClusterReferenceFactory.build(confidence_score=0.80),
+            accepted_candidate=ClusterReferenceFactory.build(confidence_score=0.8),
             candidates=[
                 ClusterReferenceFactory.build(confidence_score=0.7),
                 target,
@@ -183,7 +183,7 @@ class TestAssignDecision:
         )
         decision_repository.find_by_id.return_value = decision
 
-        result = service.assign_decision(
+        result = await service.assign_decision(
             decision.id, cluster_id=target.cluster_id, actor="curator-1"
         )
 
@@ -197,7 +197,7 @@ class TestAssignDecision:
             from_cluster_id=decision.accepted_candidate.cluster_id,
         )
 
-    def test_assign_decision_invalid_cluster_propagates(
+    async def test_assign_decision_invalid_cluster_propagates(
         self,
         service: DecisionCurationService,
         decision_repository: MagicMock,
@@ -209,14 +209,14 @@ class TestAssignDecision:
         decision_repository.find_by_id.return_value = decision
 
         with pytest.raises(InvalidClusterError):
-            service.assign_decision(
+            await service.assign_decision(
                 decision.id, cluster_id="nonexistent-cluster", actor="curator-1"
             )
 
         decision_repository.save.assert_not_called()
         audit_service.log_assign.assert_not_called()
 
-    def test_assign_decision_not_found_raises_error(
+    async def test_assign_decision_not_found_raises_error(
         self,
         service: DecisionCurationService,
         decision_repository: MagicMock,
@@ -224,6 +224,6 @@ class TestAssignDecision:
         decision_repository.find_by_id.return_value = None
 
         with pytest.raises(NotFoundError):
-            service.assign_decision(
+            await service.assign_decision(
                 "nonexistent-id", cluster_id="some-cluster", actor="curator-1"
             )
