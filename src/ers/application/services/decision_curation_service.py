@@ -49,7 +49,6 @@ class DecisionCurationService:
         Raises:
             NotFoundError: If the decision does not exist.
             InvalidStateTransitionError: If not pending review.
-            NoCandidatesError: If the decision has no candidates.
         """
         decision = self._get_decision_or_raise(decision_id)
         updated = decision.accept()
@@ -81,11 +80,7 @@ class DecisionCurationService:
             InvalidClusterError: If cluster_id is not in candidates.
         """
         decision = self._get_decision_or_raise(decision_id)
-        from_cluster_id = (
-            decision.accepted_candidate.cluster_id
-            if decision.accepted_candidate
-            else None
-        )
+        from_cluster_id = decision.accepted_candidate.cluster_id
         updated = decision.assign(cluster_id)
         self._decision_repository.save(updated)
         self._audit_service.log_assign(
