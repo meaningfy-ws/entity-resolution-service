@@ -55,8 +55,8 @@ class CurationDecisionFactory(ModelFactory):
         return None
 
     @classmethod
-    def accepted_candidate(cls) -> None:
-        return None
+    def accepted_candidate(cls) -> ClusterReference:
+        return ClusterReferenceFactory.build()
 
     @classmethod
     def candidates(cls) -> list[ClusterReference]:

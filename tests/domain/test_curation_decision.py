@@ -5,32 +5,7 @@ from erspec.models.core import DecisionAction, DecisionStatus
 from ers.domain.exceptions import (
     InvalidClusterError,
     InvalidStateTransitionError,
-    NoCandidatesError,
 )
-from tests.factories import ClusterReferenceFactory, CurationDecisionFactory
-
-
-class TestCurationDecisionTopCandidate:
-    def test_top_candidate_returns_highest_confidence(self):
-        candidates = [
-            ClusterReferenceFactory.build(confidence_score=0.5),
-            ClusterReferenceFactory.build(confidence_score=0.9),
-            ClusterReferenceFactory.build(confidence_score=0.7),
-        ]
-        decision = CurationDecisionFactory.build(candidates=candidates)
-
-        assert decision.top_candidate.confidence_score == 0.9
-
-    def test_top_candidate_returns_none_when_no_candidates(self):
-        decision = CurationDecisionFactory.build(candidates=[])
-
-        assert decision.top_candidate is None
-
-    def test_top_candidate_with_single_candidate(self):
-        candidate = ClusterReferenceFactory.build(confidence_score=0.6)
-        decision = CurationDecisionFactory.build(candidates=[candidate])
-
-        assert decision.top_candidate == candidate
 
 
 class TestCurationDecisionAccept:
@@ -47,13 +22,6 @@ class TestCurationDecisionAccept:
         result = pending_decision_with_candidates.accept()
 
         assert result.action == DecisionAction.ACCEPT_TOP
-
-    def test_accept_when_pending_sets_accepted_candidate_to_top(
-        self, pending_decision_with_candidates
-    ):
-        result = pending_decision_with_candidates.accept()
-
-        assert result.accepted_candidate.confidence_score == 0.9
 
     def test_accept_returns_new_instance(self, pending_decision_with_candidates):
         result = pending_decision_with_candidates.accept()
@@ -83,17 +51,6 @@ class TestCurationDecisionAccept:
 
         assert exc_info.value.current_status == DecisionStatus.AUTOMATIC_CONFIDENT
 
-    def test_accept_with_no_candidates_raises_no_candidates_error(self):
-        decision = CurationDecisionFactory.build(
-            status=DecisionStatus.PENDING_MANUAL_REVIEW,
-            candidates=[],
-        )
-
-        with pytest.raises(NoCandidatesError) as exc_info:
-            decision.accept()
-
-        assert exc_info.value.decision_id == decision.id
-
 
 class TestCurationDecisionReject:
     def test_reject_when_pending_sets_status_to_manually_reviewed(
@@ -107,11 +64,6 @@ class TestCurationDecisionReject:
         result = pending_decision.reject()
 
         assert result.action == DecisionAction.REJECT_ALL
-
-    def test_reject_when_pending_has_no_accepted_candidate(self, pending_decision):
-        result = pending_decision.reject()
-
-        assert result.accepted_candidate is None
 
     def test_reject_when_already_reviewed_raises_invalid_state_transition(
         self, reviewed_decision

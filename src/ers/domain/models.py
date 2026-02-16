@@ -13,7 +13,6 @@ from erspec.models.core import (
 from ers.domain.exceptions import (
     InvalidClusterError,
     InvalidStateTransitionError,
-    NoCandidatesError,
 )
 from ers.domain.utils import utc_now, serialize_to_json
 
@@ -36,12 +35,6 @@ class CurationDecision(Decision):
     @property
     def is_auto_confident(self) -> bool:
         return self.status == DecisionStatus.AUTOMATIC_CONFIDENT
-
-    @property
-    def top_candidate(self) -> Optional[ClusterReference]:
-        if not self.candidates:
-            return None
-        return max(self.candidates, key=lambda c: c.confidence_score)
 
     def _validate_can_curate(self, action: DecisionAction) -> None:
         """Validate that the decision can be curated with the given action."""
@@ -67,20 +60,16 @@ class CurationDecision(Decision):
 
         Raises:
             InvalidStateTransitionError: If decision is not pending review.
-            NoCandidatesError: If there are no candidates to accept.
         """
         self._validate_can_curate(DecisionAction.ACCEPT_TOP)
 
-        top = self.top_candidate
-        if top is None:
-            raise NoCandidatesError(self.id)
         return CurationDecision(
             id=self.id,
             about_entity_mention=self.about_entity_mention,
             candidates=self.candidates,
             status=DecisionStatus.MANUALLY_REVIEWED,
             action=DecisionAction.ACCEPT_TOP,
-            accepted_candidate=top,
+            accepted_candidate=self.accepted_candidate,
             created_at=self.created_at,
             updated_at=utc_now(),
         )
@@ -101,7 +90,7 @@ class CurationDecision(Decision):
             candidates=self.candidates,
             status=DecisionStatus.MANUALLY_REVIEWED,
             action=DecisionAction.REJECT_ALL,
-            accepted_candidate=None,
+            accepted_candidate=self.accepted_candidate,
             created_at=self.created_at,
             updated_at=utc_now(),
         )
