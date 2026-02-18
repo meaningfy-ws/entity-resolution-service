@@ -4,5 +4,3 @@ from ers.domain.models import CurationAuditLog
 
 class AuditLogRepository(AsyncWriteRepository[CurationAuditLog, str]):
     """Repository for persisting audit log entries."""
-
-    pass
