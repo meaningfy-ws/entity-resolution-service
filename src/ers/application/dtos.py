@@ -43,8 +43,8 @@ class DecisionFilters(FrozenDTO):
 
     status: DecisionStatus | None = None
     entity_type: str | None = None
-    confidence_min: float | None
-    confidence_max: float | None
+    confidence_min: float | None = None
+    confidence_max: float | None = None
     search: str | None = None
     ordering: str | None = None
 
