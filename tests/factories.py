@@ -3,7 +3,14 @@ from datetime import datetime, timezone
 from polyfactory.factories.pydantic_factory import ModelFactory
 
 # TODO: replace with actual package imports once released
-from erspec.models.core import ClusterReference, DecisionStatus, EntityMentionIdentifier
+from erspec.models.core import (
+    CanonicalEntityIdentifier,
+    ClusterReference,
+    DecisionStatus,
+    EntityMention,
+    EntityMentionIdentifier,
+)
+
 from ers.domain.models import CurationDecision
 
 
@@ -33,6 +40,38 @@ class ClusterReferenceFactory(ModelFactory):
     @classmethod
     def confidence_score(cls) -> float:
         return round(cls.__faker__.pyfloat(min_value=0.0, max_value=1.0), 2)
+
+
+class EntityMentionFactory(ModelFactory):
+    __model__ = EntityMention
+
+    @classmethod
+    def identifier(cls) -> EntityMentionIdentifier:
+        return EntityMentionIdentifierFactory.build()
+
+    @classmethod
+    def content_type(cls) -> str:
+        return "application/ld+json"
+
+    @classmethod
+    def content(cls) -> str:
+        return '{"name": "Example Entity"}'
+
+    @classmethod
+    def parsed_representation(cls) -> str:
+        return '{"name": "Example Entity"}'
+
+
+class CanonicalEntityIdentifierFactory(ModelFactory):
+    __model__ = CanonicalEntityIdentifier
+
+    @classmethod
+    def identifier(cls) -> str:
+        return f"canonical-{cls.__faker__.uuid4()[:8]}"
+
+    @classmethod
+    def equivalent_to(cls) -> list[EntityMentionIdentifier]:
+        return EntityMentionIdentifierFactory.batch(3)
 
 
 class CurationDecisionFactory(ModelFactory):
