@@ -1,6 +1,15 @@
-from ers.application.dtos import DecisionFilters, PaginatedResult
+from erspec.models.core import EntityMention
+
+from ers.application.dtos import (
+    DecisionFilters,
+    DecisionSummary,
+    EntityMentionPreview,
+    PaginatedResult,
+    PaginationParams,
+)
 from ers.application.exceptions import NotFoundError
 from ers.application.ports.decision_repository import DecisionRepository
+from ers.application.ports.entity_mention_repository import EntityMentionRepository
 from ers.application.services.audit_service import AuditService
 from ers.domain.models import CurationDecision
 
@@ -11,9 +20,11 @@ class DecisionCurationService:
     def __init__(
         self,
         decision_repository: DecisionRepository,
+        entity_mention_repository: EntityMentionRepository,
         audit_service: AuditService,
     ) -> None:
         self._decision_repository = decision_repository
+        self._entity_mention_repository = entity_mention_repository
         self._audit_service = audit_service
 
     async def _get_decision_or_raise(self, decision_id: str) -> CurationDecision:
@@ -25,14 +36,30 @@ class DecisionCurationService:
     async def list_decisions(
         self,
         filters: DecisionFilters,
-        page: int,
-        per_page: int,
-    ) -> PaginatedResult[CurationDecision]:
-        """List decisions with filtering and pagination."""
-        return await self._decision_repository.find_with_filters(
+        pagination: PaginationParams,
+    ) -> PaginatedResult[DecisionSummary]:
+        """List decisions with filtering, pagination, and embedded entity data."""
+        paginated = await self._decision_repository.find_with_filters(
             filters=filters,
-            page=page,
-            per_page=per_page,
+            pagination=pagination,
+        )
+
+        identifiers = [d.about_entity_mention for d in paginated.results]
+        entity_mentions = await self._entity_mention_repository.find_by_identifiers(
+            identifiers,
+        )
+        mention_map = self._index_by_identifier(entity_mentions)
+
+        decision_summaries = [
+            self._to_decision_summary(decision, mention_map)
+            for decision in paginated.results
+        ]
+
+        return PaginatedResult(
+            count=paginated.count,
+            previous=paginated.previous,
+            next=paginated.next,
+            results=decision_summaries,
         )
 
     async def get_decision(self, decision_id: str) -> CurationDecision:
@@ -89,3 +116,38 @@ class DecisionCurationService:
             from_cluster_id=from_cluster_id,
         )
         return updated
+
+    @staticmethod
+    def _index_by_identifier(
+        entity_mentions: list[EntityMention],
+    ) -> dict[tuple[str, str, str], EntityMention]:
+        return {
+            (
+                em.identifier.source_id,
+                em.identifier.request_id,
+                em.identifier.entity_type,
+            ): em
+            for em in entity_mentions
+        }
+
+    @staticmethod
+    def _to_decision_summary(
+        decision: CurationDecision,
+        mention_map: dict[tuple[str, str, str], EntityMention],
+    ) -> DecisionSummary:
+        emi = decision.about_entity_mention
+        key = (emi.source_id, emi.request_id, emi.entity_type)
+        mention = mention_map.get(key)
+
+        return DecisionSummary(
+            id=decision.id,
+            status=decision.status,
+            about_entity_mention=EntityMentionPreview(
+                identifier=emi,
+                parsed_representation=(
+                    mention.parsed_representation if mention else None
+                ),
+            ),
+            accepted_candidate=decision.accepted_candidate,
+            created_at=decision.created_at,
+        )
