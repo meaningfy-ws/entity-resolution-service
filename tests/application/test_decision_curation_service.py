@@ -3,20 +3,35 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from erspec.models.core import DecisionAction, DecisionStatus
 
-from ers.application.dtos import DecisionFilters, PaginatedResult
+from ers.application.dtos import (
+    DecisionFilters,
+    DecisionSummary,
+    PaginatedResult,
+    PaginationParams,
+)
 from ers.application.exceptions import NotFoundError
 from ers.application.ports.decision_repository import DecisionRepository
+from ers.application.ports.entity_mention_repository import EntityMentionRepository
 from ers.application.services.audit_service import AuditService
 from ers.application.services.decision_curation_service import (
     DecisionCurationService,
 )
 from ers.domain.exceptions import InvalidClusterError, InvalidStateTransitionError
-from tests.factories import ClusterReferenceFactory, CurationDecisionFactory
+from tests.factories import (
+    ClusterReferenceFactory,
+    CurationDecisionFactory,
+    EntityMentionFactory,
+)
 
 
 @pytest.fixture
 def decision_repository() -> MagicMock:
     return create_autospec(DecisionRepository, instance=True)
+
+
+@pytest.fixture
+def entity_mention_repository() -> MagicMock:
+    return create_autospec(EntityMentionRepository, instance=True)
 
 
 @pytest.fixture
@@ -27,30 +42,71 @@ def audit_service() -> MagicMock:
 @pytest.fixture
 def service(
     decision_repository: MagicMock,
+    entity_mention_repository: MagicMock,
     audit_service: MagicMock,
 ) -> DecisionCurationService:
     return DecisionCurationService(
         decision_repository=decision_repository,
+        entity_mention_repository=entity_mention_repository,
         audit_service=audit_service,
     )
 
 
 class TestListDecisions:
-    async def test_list_decisions_delegates_to_repository(
+    async def test_list_decisions_returns_decision_summaries(
         self,
         service: DecisionCurationService,
         decision_repository: MagicMock,
+        entity_mention_repository: MagicMock,
     ) -> None:
-        filters = DecisionFilters(status=DecisionStatus.PENDING_MANUAL_REVIEW)
-        expected = PaginatedResult(count=0, previous=None, next=None, results=[])
-        decision_repository.find_with_filters.return_value = expected
-
-        result = await service.list_decisions(filters=filters, page=1, per_page=20)
-
-        assert result == expected
-        decision_repository.find_with_filters.assert_called_once_with(
-            filters=filters, page=1, per_page=20
+        decision = CurationDecisionFactory.build()
+        entity_mention = EntityMentionFactory.build(
+            identifier=decision.about_entity_mention,
         )
+        decision_repository.find_with_filters.return_value = PaginatedResult(
+            count=1,
+            previous=None,
+            next=None,
+            results=[decision],
+        )
+        entity_mention_repository.find_by_identifiers.return_value = [entity_mention]
+
+        result = await service.list_decisions(
+            filters=DecisionFilters(),
+            pagination=PaginationParams(),
+        )
+
+        assert result.count == 1
+        summary = result.results[0]
+        assert isinstance(summary, DecisionSummary)
+        assert summary.id == decision.id
+        assert summary.about_entity_mention.identifier == decision.about_entity_mention
+        assert (
+            summary.about_entity_mention.parsed_representation
+            == entity_mention.parsed_representation
+        )
+
+    async def test_list_decisions_empty_results(
+        self,
+        service: DecisionCurationService,
+        decision_repository: MagicMock,
+        entity_mention_repository: MagicMock,
+    ) -> None:
+        decision_repository.find_with_filters.return_value = PaginatedResult(
+            count=0,
+            previous=None,
+            next=None,
+            results=[],
+        )
+        entity_mention_repository.find_by_identifiers.return_value = []
+
+        result = await service.list_decisions(
+            filters=DecisionFilters(),
+            pagination=PaginationParams(),
+        )
+
+        assert result.count == 0
+        assert result.results == []
 
 
 class TestGetDecision:
