@@ -6,6 +6,7 @@ from httpx import AsyncClient
 from erspec.models.core import DecisionStatus
 from ers.application.dtos import (
     CanonicalEntityPreview,
+    DecisionOrdering,
     DecisionSummary,
     EntityMentionPreview,
     PaginatedResult,
@@ -88,6 +89,29 @@ class TestListDecisions:
         assert filters.status == DecisionStatus.PENDING_MANUAL_REVIEW
         assert pagination.page == 2
         assert pagination.per_page == 10
+
+    async def test_passes_ordering_to_service(
+        self,
+        client: AsyncClient,
+        decision_curation_service: AsyncMock,
+    ) -> None:
+        decision_curation_service.list_decisions.return_value = PaginatedResult(
+            count=0, previous=None, next=None, results=[]
+        )
+
+        await client.get(BASE_URL, params={"ordering": "-confidence_score"})
+
+        call_args = decision_curation_service.list_decisions.call_args
+        filters = call_args.kwargs["filters"]
+        assert filters.ordering == DecisionOrdering.CONFIDENCE_DESC
+
+    async def test_rejects_invalid_ordering(
+        self,
+        client: AsyncClient,
+    ) -> None:
+        response = await client.get(BASE_URL, params={"ordering": "invalid_field"})
+
+        assert response.status_code == 422
 
 
 class TestAcceptDecision:

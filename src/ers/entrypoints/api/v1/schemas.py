@@ -9,6 +9,7 @@ from ers.application.dtos import (
     DEFAULT_PER_PAGE,
     MAX_PER_PAGE,
     DecisionFilters,
+    DecisionOrdering,
     PaginationParams,
     StatisticsFilters,
 )
@@ -40,7 +41,7 @@ def get_decision_filters(
         None, ge=0, le=1, description="Maximum confidence"
     ),
     search: str | None = Query(None, description="Search text"),
-    ordering: str | None = Query(None, description="Ordering field"),
+    ordering: DecisionOrdering | None = Query(None, description="Ordering field"),
 ) -> DecisionFilters:
     return DecisionFilters(
         status=status,
