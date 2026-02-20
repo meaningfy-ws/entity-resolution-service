@@ -1,12 +1,11 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response, status
 
 from ers.application.dtos import (
     AssignRequest,
     CanonicalEntityPreview,
     DecisionSummary,
-    ExecutionAcknowledgement,
     PaginatedResult,
 )
 from ers.application.services import CanonicalEntityService, DecisionCurationService
@@ -60,35 +59,35 @@ async def get_alternative_canonical_entities(
 
 @router.post(
     "/{decision_id}/accept",
-    response_model=ExecutionAcknowledgement,
+    status_code=status.HTTP_204_NO_CONTENT,
     responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
 )
 async def accept_decision(
     decision_id: str,
     user: CurrentUser,
     service: Annotated[DecisionCurationService, Depends(get_decision_curation_service)],
-) -> ExecutionAcknowledgement:
+) -> Response:
     await service.accept_decision(decision_id, actor=user)
-    return ExecutionAcknowledgement(success=True)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(
     "/{decision_id}/reject",
-    response_model=ExecutionAcknowledgement,
+    status_code=status.HTTP_204_NO_CONTENT,
     responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
 )
 async def reject_decision(
     decision_id: str,
     user: CurrentUser,
     service: Annotated[DecisionCurationService, Depends(get_decision_curation_service)],
-) -> ExecutionAcknowledgement:
+) -> Response:
     await service.reject_decision(decision_id, actor=user)
-    return ExecutionAcknowledgement(success=True)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(
     "/{decision_id}/assign",
-    response_model=ExecutionAcknowledgement,
+    status_code=status.HTTP_204_NO_CONTENT,
     responses={
         404: {"model": ErrorResponse},
         409: {"model": ErrorResponse},
@@ -100,10 +99,10 @@ async def assign_decision(
     body: AssignRequest,
     user: CurrentUser,
     service: Annotated[DecisionCurationService, Depends(get_decision_curation_service)],
-) -> ExecutionAcknowledgement:
+) -> Response:
     await service.assign_decision(
         decision_id,
         cluster_id=body.cluster_id,
         actor=user,
     )
-    return ExecutionAcknowledgement(success=True)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

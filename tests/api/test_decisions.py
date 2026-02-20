@@ -115,7 +115,7 @@ class TestListDecisions:
 
 
 class TestAcceptDecision:
-    async def test_accept_returns_acknowledgement(
+    async def test_accept_returns_204(
         self,
         client: AsyncClient,
         decision_curation_service: AsyncMock,
@@ -124,8 +124,8 @@ class TestAcceptDecision:
 
         response = await client.post(f"{BASE_URL}/decision-1/accept")
 
-        assert response.status_code == 200
-        assert response.json()["success"] is True
+        assert response.status_code == 204
+        assert response.content == b""
 
     async def test_accept_not_found(
         self,
@@ -158,7 +158,7 @@ class TestAcceptDecision:
 
 
 class TestRejectDecision:
-    async def test_reject_returns_acknowledgement(
+    async def test_reject_returns_204(
         self,
         client: AsyncClient,
         decision_curation_service: AsyncMock,
@@ -167,8 +167,8 @@ class TestRejectDecision:
 
         response = await client.post(f"{BASE_URL}/decision-1/reject")
 
-        assert response.status_code == 200
-        assert response.json()["success"] is True
+        assert response.status_code == 204
+        assert response.content == b""
 
     async def test_reject_not_found(
         self,
@@ -185,7 +185,7 @@ class TestRejectDecision:
 
 
 class TestAssignDecision:
-    async def test_assign_returns_acknowledgement(
+    async def test_assign_returns_204(
         self,
         client: AsyncClient,
         decision_curation_service: AsyncMock,
@@ -197,8 +197,8 @@ class TestAssignDecision:
             json={"cluster_id": "cluster-abc"},
         )
 
-        assert response.status_code == 200
-        assert response.json()["success"] is True
+        assert response.status_code == 204
+        assert response.content == b""
         decision_curation_service.assign_decision.assert_called_once_with(
             "decision-1", cluster_id="cluster-abc", actor="anonymous"
         )
