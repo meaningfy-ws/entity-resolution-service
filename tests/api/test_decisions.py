@@ -32,7 +32,7 @@ class TestListDecisions:
             status=DecisionStatus.PENDING_MANUAL_REVIEW,
             about_entity_mention=EntityMentionPreview(
                 identifier=identifier,
-                parsed_representation="Example",
+                parsed_representation='{"name": "Example"}',
             ),
             accepted_candidate=ClusterReferenceFactory.build(),
             created_at=datetime.now(timezone.utc),
