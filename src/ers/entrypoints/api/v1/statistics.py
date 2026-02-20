@@ -1,0 +1,18 @@
+from typing import Annotated
+
+from fastapi import APIRouter, Depends
+
+from ers.application.dtos import Statistics
+from ers.application.services import StatisticsService
+from ers.entrypoints.api.dependencies import get_statistics_service
+from ers.entrypoints.api.v1.schemas import StatisticsFiltersDep
+
+router = APIRouter(prefix="/curation/stats", tags=["Statistics"])
+
+
+@router.get("", response_model=Statistics)
+async def get_statistics(
+    filters: StatisticsFiltersDep,
+    service: Annotated[StatisticsService, Depends(get_statistics_service)],
+) -> Statistics:
+    return await service.get_statistics(filters=filters)
