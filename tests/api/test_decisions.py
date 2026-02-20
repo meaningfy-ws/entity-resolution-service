@@ -217,7 +217,7 @@ class TestAssignDecision:
             json={"cluster_id": "cluster-bad"},
         )
 
-        assert response.status_code == 422
+        assert response.status_code == 409
 
 
 class TestGetProposedCanonicalEntity:

@@ -91,7 +91,6 @@ async def reject_decision(
     responses={
         404: {"model": ErrorResponse},
         409: {"model": ErrorResponse},
-        422: {"model": ErrorResponse},
     },
 )
 async def assign_decision(

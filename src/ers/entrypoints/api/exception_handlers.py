@@ -38,7 +38,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         exc: InvalidClusterError,
     ) -> JSONResponse:
         return JSONResponse(
-            status_code=422,
+            status_code=409,
             content={"detail": exc.message},
         )
 
