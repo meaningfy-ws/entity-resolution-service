@@ -29,6 +29,7 @@ async def list_decisions(
     pagination: Pagination,
     service: Annotated[DecisionCurationService, Depends(get_decision_curation_service)],
 ) -> PaginatedResult[DecisionSummary]:
+    """Retrieve paginated list of decisions with optional filtering."""
     return await service.list_decisions(filters=filters, pagination=pagination)
 
 
@@ -41,6 +42,7 @@ async def get_proposed_canonical_entity(
     decision_id: str,
     service: Annotated[CanonicalEntityService, Depends(get_canonical_entity_service)],
 ) -> CanonicalEntityPreview:
+    """Get the proposed canonical entity for a given decision."""
     return await service.get_proposed_canonical_entity(decision_id)
 
 
@@ -54,6 +56,7 @@ async def get_alternative_canonical_entities(
     pagination: Pagination,
     service: Annotated[CanonicalEntityService, Depends(get_canonical_entity_service)],
 ) -> PaginatedResult[CanonicalEntityPreview]:
+    """Get alternative canonical entities for a given decision."""
     return await service.get_alternative_canonical_entities(decision_id, pagination)
 
 
@@ -67,6 +70,7 @@ async def accept_decision(
     user: CurrentUser,
     service: Annotated[DecisionCurationService, Depends(get_decision_curation_service)],
 ) -> Response:
+    """Accept the proposed canonical entity match."""
     await service.accept_decision(decision_id, actor=user)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -81,6 +85,7 @@ async def reject_decision(
     user: CurrentUser,
     service: Annotated[DecisionCurationService, Depends(get_decision_curation_service)],
 ) -> Response:
+    """Reject the proposed canonical entity match."""
     await service.reject_decision(decision_id, actor=user)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -99,6 +104,7 @@ async def assign_decision(
     user: CurrentUser,
     service: Annotated[DecisionCurationService, Depends(get_decision_curation_service)],
 ) -> Response:
+    """Assign the subject entity mention to a specific cluster."""
     await service.assign_decision(
         decision_id,
         cluster_id=body.cluster_id,

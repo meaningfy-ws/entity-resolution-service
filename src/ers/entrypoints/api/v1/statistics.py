@@ -15,4 +15,5 @@ async def get_statistics(
     filters: StatisticsFiltersDep,
     service: Annotated[StatisticsService, Depends(get_statistics_service)],
 ) -> Statistics:
+    """Retrieve registry statistics and curation statistics with optional filtering."""
     return await service.get_statistics(filters=filters)
