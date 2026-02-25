@@ -1,20 +1,15 @@
 from ers.domain.exceptions import (
+    AlreadyCuratedError,
     DomainError,
     InvalidClusterError,
-    InvalidStateTransitionError,
 )
-from ers.domain.models import CurationAuditLog, CurationDecision
-from ers.domain.utils import serialize_to_json, utc_now
+from ers.domain.models import UserActionFactory
 
 __all__ = [
     # Exceptions
     "DomainError",
-    "InvalidStateTransitionError",
+    "AlreadyCuratedError",
     "InvalidClusterError",
-    # Domain entities
-    "CurationDecision",
-    "CurationAuditLog",
-    # Utils
-    "utc_now",
-    "serialize_to_json",
+    # Domain factories
+    "UserActionFactory",
 ]
