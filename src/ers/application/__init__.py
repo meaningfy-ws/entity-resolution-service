@@ -1,12 +1,12 @@
 from ers.application.dtos import DecisionFilters, PaginatedResult
 from ers.application.exceptions import ApplicationError, NotFoundError
-from ers.application.ports.audit_log_repository import AuditLogRepository
 from ers.application.ports.decision_repository import DecisionRepository
 from ers.application.ports.repositories import AsyncReadRepository, AsyncWriteRepository
-from ers.application.services.audit_service import AuditService
+from ers.application.ports.user_action_repository import UserActionRepository
 from ers.application.services.decision_curation_service import (
     DecisionCurationService,
 )
+from ers.application.services.user_action_service import UserActionService
 
 __all__ = [
     # DTOs
@@ -19,8 +19,8 @@ __all__ = [
     "AsyncReadRepository",
     "AsyncWriteRepository",
     "DecisionRepository",
-    "AuditLogRepository",
+    "UserActionRepository",
     # Services
-    "AuditService",
+    "UserActionService",
     "DecisionCurationService",
 ]
