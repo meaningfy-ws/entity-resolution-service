@@ -43,8 +43,9 @@ class CanonicalEntityService:
             raise NotFoundError("Decision", decision_id)
 
         return await self._build_canonical_entity_preview(
-            cluster_id=decision.accepted_candidate.cluster_id,
-            confidence_score=decision.accepted_candidate.confidence_score,
+            cluster_id=decision.current_placement.cluster_id,
+            confidence_score=decision.current_placement.confidence_score,
+            similarity_score=decision.current_placement.similarity_score,
         )
 
     async def get_alternative_canonical_entities(
@@ -61,8 +62,8 @@ class CanonicalEntityService:
         if decision is None:
             raise NotFoundError("Decision", decision_id)
 
-        accepted_id = decision.accepted_candidate.cluster_id
-        alternatives = [c for c in decision.candidates if c.cluster_id != accepted_id]
+        current_id = decision.current_placement.cluster_id
+        alternatives = [c for c in decision.candidates if c.cluster_id != current_id]
 
         total = len(alternatives)
         start = (pagination.page - 1) * pagination.per_page
@@ -72,6 +73,7 @@ class CanonicalEntityService:
             await self._build_canonical_entity_preview(
                 cluster_id=candidate.cluster_id,
                 confidence_score=candidate.confidence_score,
+                similarity_score=candidate.similarity_score,
             )
             for candidate in page_items
         ]
@@ -87,6 +89,7 @@ class CanonicalEntityService:
         self,
         cluster_id: str,
         confidence_score: float,
+        similarity_score: float,
     ) -> CanonicalEntityPreview:
         canonical_entity = await self._canonical_entity_repository.find_by_id(
             cluster_id,
@@ -102,6 +105,7 @@ class CanonicalEntityService:
         return CanonicalEntityPreview(
             cluster_id=cluster_id,
             confidence_score=confidence_score,
+            similarity_score=similarity_score,
             top_entities=self._to_entity_mention_previews(entity_mentions),
         )
 
@@ -111,7 +115,7 @@ class CanonicalEntityService:
     ) -> list[EntityMentionPreview]:
         return [
             EntityMentionPreview(
-                identifier=em.identifier,
+                identified_by=em.identifiedBy,
                 parsed_representation=em.parsed_representation,
             )
             for em in entity_mentions
