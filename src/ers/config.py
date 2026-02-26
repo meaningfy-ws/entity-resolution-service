@@ -20,6 +20,13 @@ class Settings(BaseSettings):
     sso_issuer_url: str = ""
     sso_client_id: str = ""
 
+    curation_confidence_threshold: float = Field(
+        default=0.85,
+        ge=0.0,
+        le=1.0,
+        description="Decisions with confidence below this threshold appear in curation worklist",
+    )
+
 
 def get_settings() -> Settings:
     return Settings()
