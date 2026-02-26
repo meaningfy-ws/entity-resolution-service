@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import Depends, Query
 from pydantic import BaseModel
 
-from erspec.models.core import DecisionStatus, EntityType
+from erspec.models.core import EntityType
 from ers.application.dtos import (
     DEFAULT_PER_PAGE,
     MAX_PER_PAGE,
@@ -32,7 +32,6 @@ def get_pagination(
 
 
 def get_decision_filters(
-    status: DecisionStatus | None = Query(None, description="Filter by status"),
     entity_type: str | None = Query(None, description="Filter by entity type"),
     confidence_min: float | None = Query(
         None, ge=0, le=1, description="Minimum confidence"
@@ -40,14 +39,21 @@ def get_decision_filters(
     confidence_max: float | None = Query(
         None, ge=0, le=1, description="Maximum confidence"
     ),
+    similarity_min: float | None = Query(
+        None, ge=0, le=1, description="Minimum similarity"
+    ),
+    similarity_max: float | None = Query(
+        None, ge=0, le=1, description="Maximum similarity"
+    ),
     search: str | None = Query(None, description="Search text"),
     ordering: DecisionOrdering | None = Query(None, description="Ordering field"),
 ) -> DecisionFilters:
     return DecisionFilters(
-        status=status,
         entity_type=entity_type,
         confidence_min=confidence_min,
         confidence_max=confidence_max,
+        similarity_min=similarity_min,
+        similarity_max=similarity_max,
         search=search,
         ordering=ordering,
     )
