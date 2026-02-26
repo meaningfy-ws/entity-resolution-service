@@ -2,19 +2,19 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from ers.application.ports.audit_log_repository import AuditLogRepository
 from ers.application.ports.canonical_entity_repository import (
     CanonicalEntityRepository,
 )
 from ers.application.ports.decision_repository import DecisionRepository
 from ers.application.ports.entity_mention_repository import EntityMentionRepository
 from ers.application.ports.statistics_repository import StatisticsRepository
+from ers.application.ports.user_action_repository import UserActionRepository
 from ers.application.services import (
-    AuditService,
     CanonicalEntityService,
     DecisionCurationService,
     EntityService,
     StatisticsService,
+    UserActionService,
 )
 
 
@@ -33,8 +33,8 @@ async def get_canonical_entity_repository() -> CanonicalEntityRepository:
     raise NotImplementedError("CanonicalEntity repository adapter not configured")
 
 
-async def get_audit_log_repository() -> AuditLogRepository:
-    raise NotImplementedError("AuditLog repository adapter not configured")
+async def get_user_action_repository() -> UserActionRepository:
+    raise NotImplementedError("UserAction repository adapter not configured")
 
 
 async def get_statistics_repository() -> StatisticsRepository:
@@ -44,10 +44,10 @@ async def get_statistics_repository() -> StatisticsRepository:
 # Service providers
 
 
-async def get_audit_service(
-    repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
-) -> AuditService:
-    return AuditService(audit_log_repository=repo)
+async def get_user_action_service(
+    repo: Annotated[UserActionRepository, Depends(get_user_action_repository)],
+) -> UserActionService:
+    return UserActionService(user_action_repository=repo)
 
 
 async def get_decision_curation_service(
@@ -55,12 +55,12 @@ async def get_decision_curation_service(
     entity_repo: Annotated[
         EntityMentionRepository, Depends(get_entity_mention_repository)
     ],
-    audit_service: Annotated[AuditService, Depends(get_audit_service)],
+    user_action_service: Annotated[UserActionService, Depends(get_user_action_service)],
 ) -> DecisionCurationService:
     return DecisionCurationService(
         decision_repository=decision_repo,
         entity_mention_repository=entity_repo,
-        audit_service=audit_service,
+        user_action_service=user_action_service,
     )
 
 
