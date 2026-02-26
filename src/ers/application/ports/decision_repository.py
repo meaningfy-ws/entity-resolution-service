@@ -1,20 +1,21 @@
 from abc import abstractmethod
 
+from erspec.models.core import Decision
+
 from ers.application.dtos import DecisionFilters, PaginatedResult, PaginationParams
 from ers.application.ports.repositories import AsyncReadRepository, AsyncWriteRepository
-from ers.domain.models import CurationDecision
 
 
 class DecisionRepository(
-    AsyncReadRepository[CurationDecision, str],
-    AsyncWriteRepository[CurationDecision, str],
+    AsyncReadRepository[Decision, str],
+    AsyncWriteRepository[Decision, str],
 ):
-    """Repository for decision persistence and querying."""
+    """Repository for decision projection persistence and querying."""
 
     @abstractmethod
     async def find_with_filters(
         self,
         filters: DecisionFilters,
         pagination: PaginationParams,
-    ) -> PaginatedResult[CurationDecision]:
+    ) -> PaginatedResult[Decision]:
         """Find decisions matching filters with pagination."""
