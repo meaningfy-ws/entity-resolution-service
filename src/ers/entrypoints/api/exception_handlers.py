@@ -3,9 +3,9 @@ from fastapi.responses import JSONResponse
 
 from ers.application.exceptions import ApplicationError, NotFoundError
 from ers.domain.exceptions import (
+    AlreadyCuratedError,
     DomainError,
     InvalidClusterError,
-    InvalidStateTransitionError,
 )
 
 
@@ -22,10 +22,10 @@ def register_exception_handlers(app: FastAPI) -> None:
             content={"detail": exc.message},
         )
 
-    @app.exception_handler(InvalidStateTransitionError)
-    async def invalid_state_handler(
+    @app.exception_handler(AlreadyCuratedError)
+    async def already_curated_handler(
         request: Request,
-        exc: InvalidStateTransitionError,
+        exc: AlreadyCuratedError,
     ) -> JSONResponse:
         return JSONResponse(
             status_code=409,
