@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock
 
 from httpx import AsyncClient
 
-from erspec.models.core import DecisionStatus
 from ers.application.dtos import (
     CanonicalEntityPreview,
     DecisionOrdering,
@@ -12,7 +11,7 @@ from ers.application.dtos import (
     PaginatedResult,
 )
 from ers.application.exceptions import NotFoundError
-from ers.domain.exceptions import InvalidClusterError, InvalidStateTransitionError
+from ers.domain.exceptions import AlreadyCuratedError, InvalidClusterError
 from tests.factories import (
     ClusterReferenceFactory,
     EntityMentionIdentifierFactory,
@@ -30,12 +29,11 @@ class TestListDecisions:
         identifier = EntityMentionIdentifierFactory.build()
         summary = DecisionSummary(
             id="decision-1",
-            status=DecisionStatus.PENDING_MANUAL_REVIEW,
             about_entity_mention=EntityMentionPreview(
-                identifier=identifier,
+                identified_by=identifier,
                 parsed_representation='{"name": "Example"}',
             ),
-            accepted_candidate=ClusterReferenceFactory.build(),
+            current_placement=ClusterReferenceFactory.build(),
             created_at=datetime.now(timezone.utc),
         )
         decision_curation_service.list_decisions.return_value = PaginatedResult(
@@ -77,7 +75,7 @@ class TestListDecisions:
         await client.get(
             BASE_URL,
             params={
-                "status": "PENDING_MANUAL_REVIEW",
+                "confidence_min": 0.5,
                 "page": 2,
                 "per_page": 10,
             },
@@ -86,7 +84,7 @@ class TestListDecisions:
         call_args = decision_curation_service.list_decisions.call_args
         filters = call_args.kwargs["filters"]
         pagination = call_args.kwargs["pagination"]
-        assert filters.status == DecisionStatus.PENDING_MANUAL_REVIEW
+        assert filters.confidence_min == 0.5
         assert pagination.page == 2
         assert pagination.per_page == 10
 
@@ -140,16 +138,13 @@ class TestAcceptDecision:
 
         assert response.status_code == 404
 
-    async def test_accept_invalid_state(
+    async def test_accept_already_curated(
         self,
         client: AsyncClient,
         decision_curation_service: AsyncMock,
     ) -> None:
-        decision_curation_service.accept_decision.side_effect = (
-            InvalidStateTransitionError(
-                current_status="MANUALLY_REVIEWED",
-                attempted_action="ACCEPT_TOP",
-            )
+        decision_curation_service.accept_decision.side_effect = AlreadyCuratedError(
+            "decision-1"
         )
 
         response = await client.post(f"{BASE_URL}/decision-1/accept")
@@ -229,6 +224,7 @@ class TestGetProposedCanonicalEntity:
         preview = CanonicalEntityPreview(
             cluster_id="cluster-1",
             confidence_score=0.95,
+            similarity_score=0.9,
             top_entities=[],
         )
         canonical_entity_service.get_proposed_canonical_entity.return_value = preview
@@ -263,6 +259,7 @@ class TestGetAlternativeCanonicalEntities:
         preview = CanonicalEntityPreview(
             cluster_id="cluster-2",
             confidence_score=0.7,
+            similarity_score=0.65,
             top_entities=[],
         )
         canonical_entity_service.get_alternative_canonical_entities.return_value = (
