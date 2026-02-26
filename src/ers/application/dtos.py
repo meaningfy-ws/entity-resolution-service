@@ -1,11 +1,11 @@
 from datetime import datetime
-from typing import Generic, TypeVar
+from enum import Enum
+from typing import Any, Generic, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, Json
 
 from erspec.models.core import (
     ClusterReference,
-    DecisionStatus,
     EntityMentionIdentifier,
     EntityType,
 )
@@ -38,15 +38,27 @@ class PaginatedResult(FrozenDTO, Generic[T]):
     results: list[T]
 
 
+class DecisionOrdering(str, Enum):
+    """Allowed ordering options for decision listing."""
+
+    CONFIDENCE_ASC = "confidence_score"
+    CONFIDENCE_DESC = "-confidence_score"
+    CREATED_AT_ASC = "created_at"
+    CREATED_AT_DESC = "-created_at"
+    UPDATED_AT_ASC = "updated_at"
+    UPDATED_AT_DESC = "-updated_at"
+
+
 class DecisionFilters(FrozenDTO):
     """Filtering criteria for decision queries."""
 
-    status: DecisionStatus | None = None
     entity_type: str | None = None
     confidence_min: float | None = None
     confidence_max: float | None = None
+    similarity_min: float | None = None
+    similarity_max: float | None = None
     search: str | None = None
-    ordering: str | None = None
+    ordering: DecisionOrdering | None = None
 
 
 class StatisticsFilters(FrozenDTO):
@@ -60,18 +72,18 @@ class StatisticsFilters(FrozenDTO):
 class EntityMentionPreview(FrozenDTO):
     """Lightweight entity mention projection for display."""
 
-    identifier: EntityMentionIdentifier
-    parsed_representation: str | None = None
+    identified_by: EntityMentionIdentifier
+    parsed_representation: Json[dict[str, Any]] | None = None
 
 
 class DecisionSummary(FrozenDTO):
     """Decision summary for list display."""
 
     id: str
-    status: DecisionStatus
     about_entity_mention: EntityMentionPreview
-    accepted_candidate: ClusterReference
+    current_placement: ClusterReference
     created_at: datetime
+    updated_at: datetime | None = None
 
 
 class CanonicalEntityPreview(FrozenDTO):
@@ -79,16 +91,17 @@ class CanonicalEntityPreview(FrozenDTO):
 
     cluster_id: str
     confidence_score: float
+    similarity_score: float
     top_entities: list[EntityMentionPreview]
 
 
 class CurationStatistics(FrozenDTO):
-    """Statistics about the curation process."""
+    """Statistics about the curation process based on UserAction counts."""
 
     total_decisions: int
-    pending_review: int
-    manually_reviewed: int
-    automatic_confident: int
+    selected_top: int
+    selected_alternative: int
+    rejected_all: int
 
 
 class RegistryStatistics(FrozenDTO):
@@ -105,13 +118,6 @@ class Statistics(FrozenDTO):
 
     registry: RegistryStatistics
     curation: CurationStatistics
-
-
-class ExecutionAcknowledgement(FrozenDTO):
-    """Response confirming successful execution of a curation action."""
-
-    success: bool
-    message: str | None = None
 
 
 class AssignRequest(FrozenDTO):
