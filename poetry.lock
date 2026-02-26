@@ -522,6 +522,25 @@ files = [
 ]
 
 [[package]]
+name = "ers-core"
+version = "0.0.1"
+description = "  The core components for the Entity Resolution System (ERS) components.\n\n  The ERS is a pluggable entity resolution system for data transformation pipelines.\n"
+optional = false
+python-versions = ">=3.12,<4.0"
+groups = ["main"]
+files = []
+develop = false
+
+[package.dependencies]
+pydantic = ">=2.10.6,<3.0.0"
+
+[package.source]
+type = "git"
+url = "https://github.com/meaningfy-ws/entity-resolution-spec.git"
+reference = "develop"
+resolved_reference = "1ca4ae4dae4edf6b5e1f81d4c7e2e0d01d23691b"
+
+[[package]]
 name = "et-xmlfile"
 version = "2.0.0"
 description = "An implementation of lxml.xmlfile for the standard library"
@@ -2718,4 +2737,4 @@ dev = ["pytest", "setuptools"]
 [metadata]
 lock-version = "2.1"
 python-versions = "~=3.14.0"
-content-hash = "40917401b991e0d2a3c952f1da38fecf800ec69f48db8c21e7242c01587eb595"
+content-hash = "7776369339268a7fe89d92ee457320a57f657bbe1d26e5f258a8f8b23b80a49e"
