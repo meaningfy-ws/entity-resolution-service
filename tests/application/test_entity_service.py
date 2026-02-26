@@ -27,11 +27,11 @@ class TestGetEntityMention:
         entity_mention = EntityMentionFactory.build()
         entity_mention_repository.find_by_id.return_value = entity_mention
 
-        result = await service.get_entity_mention(entity_mention.identifier)
+        result = await service.get_entity_mention(entity_mention.identifiedBy)
 
         assert result == entity_mention
         entity_mention_repository.find_by_id.assert_called_once_with(
-            entity_mention.identifier,
+            entity_mention.identifiedBy,
         )
 
     async def test_not_found_raises_error(

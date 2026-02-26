@@ -31,9 +31,9 @@ class TestGetStatistics:
     ) -> None:
         curation = CurationStatistics(
             total_decisions=100,
-            pending_review=30,
-            manually_reviewed=50,
-            automatic_confident=20,
+            selected_top=50,
+            selected_alternative=30,
+            rejected_all=20,
         )
         registry = RegistryStatistics(
             total_entity_mentions=5000,
@@ -58,9 +58,9 @@ class TestGetStatistics:
         filters = StatisticsFilters(entity_type=EntityType.ORGANISATION)
         statistics_repository.get_curation_statistics.return_value = CurationStatistics(
             total_decisions=0,
-            pending_review=0,
-            manually_reviewed=0,
-            automatic_confident=0,
+            selected_top=0,
+            selected_alternative=0,
+            rejected_all=0,
         )
         statistics_repository.get_registry_statistics.return_value = RegistryStatistics(
             total_entity_mentions=0,

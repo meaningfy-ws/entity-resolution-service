@@ -17,7 +17,7 @@ from ers.application.services.canonical_entity_service import CanonicalEntitySer
 from tests.factories import (
     CanonicalEntityIdentifierFactory,
     ClusterReferenceFactory,
-    CurationDecisionFactory,
+    DecisionFactory,
     EntityMentionFactory,
     EntityMentionIdentifierFactory,
 )
@@ -60,12 +60,12 @@ class TestGetProposedCanonicalEntity:
         entity_mention_repository: MagicMock,
     ) -> None:
         member_ids = EntityMentionIdentifierFactory.batch(3)
-        decision = CurationDecisionFactory.build()
+        decision = DecisionFactory.build()
         canonical = CanonicalEntityIdentifierFactory.build(
-            identifier=decision.accepted_candidate.cluster_id,
+            identifier=decision.current_placement.cluster_id,
             equivalent_to=member_ids,
         )
-        mentions = [EntityMentionFactory.build(identifier=mid) for mid in member_ids]
+        mentions = [EntityMentionFactory.build(identifiedBy=mid) for mid in member_ids]
 
         decision_repository.find_by_id.return_value = decision
         canonical_entity_repository.find_by_id.return_value = canonical
@@ -74,8 +74,9 @@ class TestGetProposedCanonicalEntity:
         result = await service.get_proposed_canonical_entity(decision.id)
 
         assert isinstance(result, CanonicalEntityPreview)
-        assert result.cluster_id == decision.accepted_candidate.cluster_id
-        assert result.confidence_score == decision.accepted_candidate.confidence_score
+        assert result.cluster_id == decision.current_placement.cluster_id
+        assert result.confidence_score == decision.current_placement.confidence_score
+        assert result.similarity_score == decision.current_placement.similarity_score
         assert len(result.top_entities) == 3
 
     async def test_decision_not_found_raises_error(
@@ -96,7 +97,7 @@ class TestGetProposedCanonicalEntity:
         decision_repository: MagicMock,
         canonical_entity_repository: MagicMock,
     ) -> None:
-        decision = CurationDecisionFactory.build()
+        decision = DecisionFactory.build()
         decision_repository.find_by_id.return_value = decision
         canonical_entity_repository.find_by_id.return_value = None
 
@@ -113,12 +114,18 @@ class TestGetAlternativeCanonicalEntities:
         decision_repository: MagicMock,
         entity_mention_repository: MagicMock,
     ) -> None:
-        accepted = ClusterReferenceFactory.build(confidence_score=0.9)
-        alt1 = ClusterReferenceFactory.build(confidence_score=0.7)
-        alt2 = ClusterReferenceFactory.build(confidence_score=0.5)
-        decision = CurationDecisionFactory.build(
-            accepted_candidate=accepted,
-            candidates=[accepted, alt1, alt2],
+        current = ClusterReferenceFactory.build(
+            confidence_score=0.9, similarity_score=0.85
+        )
+        alt1 = ClusterReferenceFactory.build(
+            confidence_score=0.7, similarity_score=0.65
+        )
+        alt2 = ClusterReferenceFactory.build(
+            confidence_score=0.5, similarity_score=0.45
+        )
+        decision = DecisionFactory.build(
+            current_placement=current,
+            candidates=[current, alt1, alt2],
         )
         decision_repository.find_by_id.return_value = decision
 
@@ -137,18 +144,20 @@ class TestGetAlternativeCanonicalEntities:
         assert result.next is None
         assert result.previous is None
 
-    async def test_excludes_accepted_candidate(
+    async def test_excludes_current_placement(
         self,
         service: CanonicalEntityService,
         decision_repository: MagicMock,
         canonical_entity_repository: MagicMock,
         entity_mention_repository: MagicMock,
     ) -> None:
-        accepted = ClusterReferenceFactory.build(confidence_score=0.9)
-        alt = ClusterReferenceFactory.build(confidence_score=0.6)
-        decision = CurationDecisionFactory.build(
-            accepted_candidate=accepted,
-            candidates=[accepted, alt],
+        current = ClusterReferenceFactory.build(
+            confidence_score=0.9, similarity_score=0.85
+        )
+        alt = ClusterReferenceFactory.build(confidence_score=0.6, similarity_score=0.55)
+        decision = DecisionFactory.build(
+            current_placement=current,
+            candidates=[current, alt],
         )
         decision_repository.find_by_id.return_value = decision
 
@@ -175,11 +184,13 @@ class TestGetAlternativeCanonicalEntities:
         canonical_entity_repository: MagicMock,
         entity_mention_repository: MagicMock,
     ) -> None:
-        accepted = ClusterReferenceFactory.build(confidence_score=0.95)
+        current = ClusterReferenceFactory.build(
+            confidence_score=0.95, similarity_score=0.9
+        )
         alternatives = ClusterReferenceFactory.batch(5)
-        decision = CurationDecisionFactory.build(
-            accepted_candidate=accepted,
-            candidates=[accepted, *alternatives],
+        decision = DecisionFactory.build(
+            current_placement=current,
+            candidates=[current, *alternatives],
         )
         decision_repository.find_by_id.return_value = decision
 
