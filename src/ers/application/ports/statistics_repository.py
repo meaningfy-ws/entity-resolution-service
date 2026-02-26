@@ -15,7 +15,7 @@ class StatisticsRepository(ABC):
         self,
         filters: StatisticsFilters,
     ) -> CurationStatistics:
-        """Aggregate decision counts by status."""
+        """Aggregate curation action counts."""
 
     @abstractmethod
     async def get_registry_statistics(
