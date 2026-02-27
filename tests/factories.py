@@ -114,8 +114,8 @@ class DecisionFactory(ModelFactory):
         return datetime.now(timezone.utc)
 
     @classmethod
-    def updated_at(cls) -> None:
-        return None
+    def updated_at(cls) -> datetime:
+        return datetime.now(timezone.utc)
 
 
 class UserActionFactory(ModelFactory):
