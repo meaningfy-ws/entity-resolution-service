@@ -1,0 +1,68 @@
+import pytest
+from pymongo.asynchronous.database import AsyncDatabase
+
+
+from ers.adapters.mongodb import MongoEntityMentionRepository
+from tests.factories import EntityMentionFactory, EntityMentionIdentifierFactory
+
+pytestmark = pytest.mark.integration
+
+
+@pytest.fixture
+def repo(mongo_db: AsyncDatabase) -> MongoEntityMentionRepository:
+    return MongoEntityMentionRepository(mongo_db["entity_mentions"])
+
+
+class TestSaveAndFindById:
+    async def test_save_and_retrieve(self, repo: MongoEntityMentionRepository) -> None:
+        mention = EntityMentionFactory.build()
+        await repo.save(mention)
+
+        found = await repo.find_by_id(mention.identifiedBy)
+
+        assert found is not None
+        assert found.identifiedBy.source_id == mention.identifiedBy.source_id
+        assert found.content == mention.content
+
+    async def test_find_by_id_not_found(
+        self, repo: MongoEntityMentionRepository
+    ) -> None:
+        missing = EntityMentionIdentifierFactory.build()
+        result = await repo.find_by_id(missing)
+        assert result is None
+
+
+class TestFindByIdentifiers:
+    async def test_batch_fetch(self, repo: MongoEntityMentionRepository) -> None:
+        mentions = EntityMentionFactory.batch(3)
+        for m in mentions:
+            await repo.save(m)
+
+        identifiers = [m.identifiedBy for m in mentions]
+        results = await repo.find_by_identifiers(identifiers)
+
+        assert len(results) == 3
+
+    async def test_batch_fetch_with_limit(
+        self, repo: MongoEntityMentionRepository
+    ) -> None:
+        mentions = EntityMentionFactory.batch(3)
+        for m in mentions:
+            await repo.save(m)
+
+        identifiers = [m.identifiedBy for m in mentions]
+        results = await repo.find_by_identifiers(identifiers, limit=2)
+
+        assert len(results) == 2
+
+    async def test_batch_fetch_partial_match(
+        self, repo: MongoEntityMentionRepository
+    ) -> None:
+        mention = EntityMentionFactory.build()
+        await repo.save(mention)
+
+        missing = EntityMentionIdentifierFactory.build()
+        results = await repo.find_by_identifiers([mention.identifiedBy, missing])
+
+        assert len(results) == 1
+        assert results[0].identifiedBy.source_id == mention.identifiedBy.source_id
