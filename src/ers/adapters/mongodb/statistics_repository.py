@@ -48,7 +48,8 @@ class MongoStatisticsRepository(StatisticsRepositoryPort):
         pipeline.append({"$group": {"_id": "$action_type", "count": {"$sum": 1}}})
 
         counts: dict[str, int] = {}
-        async for doc in self._db["user_actions"].aggregate(pipeline):
+        cursor = await self._db["user_actions"].aggregate(pipeline)
+        async for doc in cursor:
             counts[doc["_id"]] = doc["count"]
 
         return CurationStatistics(
@@ -77,9 +78,8 @@ class MongoStatisticsRepository(StatisticsRepositoryPort):
             {"$project": {"size": {"$size": {"$ifNull": ["$equivalent_to", []]}}}},
             {"$group": {"_id": None, "avg": {"$avg": "$size"}}},
         ]
-        avg_result = (
-            await self._db["canonical_entities"].aggregate(avg_pipeline).to_list()
-        )
+        avg_cursor = await self._db["canonical_entities"].aggregate(avg_pipeline)
+        avg_result = await avg_cursor.to_list()
         average_cluster_size = avg_result[0]["avg"] if avg_result else 0.0
 
         distinct_requests = await self._db["entity_mentions"].distinct(
