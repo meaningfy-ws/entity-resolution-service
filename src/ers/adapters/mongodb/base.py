@@ -3,11 +3,15 @@ from typing import Any, Generic, TypeVar
 from pydantic import BaseModel
 from pymongo.asynchronous.collection import AsyncCollection
 
+from ers.application import AsyncReadRepository, AsyncWriteRepository
+
 T = TypeVar("T", bound=BaseModel)
 ID = TypeVar("ID")
 
 
-class BaseMongoRepository(Generic[T, ID]):
+class BaseMongoRepository(
+    Generic[T, ID], AsyncReadRepository[T, ID], AsyncWriteRepository[T, ID]
+):
     """Generic base for MongoDB repositories backed by Pydantic models.
 
     Handles bidirectional conversion between Pydantic models and MongoDB documents,
