@@ -33,7 +33,7 @@ def get_pagination(
 
 
 def get_decision_filters(
-    entity_type: str | None = Query(None, description="Filter by entity type"),
+    entity_type: EntityType | None = Query(None, description="Filter by entity type"),
     confidence_min: float | None = Query(
         None, ge=0, le=1, description="Minimum confidence"
     ),
