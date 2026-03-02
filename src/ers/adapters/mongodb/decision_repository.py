@@ -27,7 +27,7 @@ class MongoDecisionRepository(
         if filters.entity_type is not None:
             query["about_entity_mention.entity_type"] = filters.entity_type
 
-        placement_range: dict[str, float] = {}
+        placement_range: dict[str, dict[str, float]] = {}
         if filters.confidence_min is not None:
             placement_range.setdefault("current_placement.confidence_score", {})[
                 "$gte"
