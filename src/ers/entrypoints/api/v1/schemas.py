@@ -5,6 +5,7 @@ from fastapi import Depends, Query
 from pydantic import BaseModel
 
 from erspec.models.core import EntityType
+from ers.config import get_settings
 from ers.application.dtos import (
     DEFAULT_PER_PAGE,
     MAX_PER_PAGE,
@@ -37,7 +38,10 @@ def get_decision_filters(
         None, ge=0, le=1, description="Minimum confidence"
     ),
     confidence_max: float | None = Query(
-        None, ge=0, le=1, description="Maximum confidence"
+        get_settings().curation_confidence_threshold,
+        ge=0,
+        le=1,
+        description="Maximum confidence",
     ),
     similarity_min: float | None = Query(
         None, ge=0, le=1, description="Minimum similarity"
