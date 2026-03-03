@@ -146,3 +146,32 @@ class TestFindWithFilters:
         )
         scores = [r.current_placement.confidence_score for r in result.results]
         assert scores == sorted(scores)
+
+    async def test_filter_by_mention_identifiers(
+        self, repo: MongoDecisionRepository
+    ) -> None:
+        decisions = await self._seed(repo)
+        target = decisions[0].about_entity_mention
+
+        result = await repo.find_with_filters(
+            DecisionFilters(),
+            PaginationParams(),
+            mention_identifiers=[target],
+        )
+
+        assert result.count == 1
+        assert result.results[0].id == decisions[0].id
+
+    async def test_filter_by_mention_identifiers_empty_list_returns_none(
+        self, repo: MongoDecisionRepository
+    ) -> None:
+        await self._seed(repo)
+
+        result = await repo.find_with_filters(
+            DecisionFilters(),
+            PaginationParams(),
+            mention_identifiers=[],
+        )
+
+        assert result.count == 0
+        assert result.results == []
