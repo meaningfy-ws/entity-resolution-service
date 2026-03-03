@@ -3,11 +3,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 
 class MongoClientManager:
-    """Manages the lifecycle of an AsyncMongoClient.
-
-    Entrypoint-agnostic: Each entrypoint creates its own manager instance
-    during startup and closes it during shutdown.
-    """
+    """Manages the lifecycle of an AsyncMongoClient."""
 
     def __init__(self, mongo_uri: str, database_name: str) -> None:
         self._mongo_uri = mongo_uri
