@@ -27,3 +27,17 @@ class MongoClientManager:
                 "MongoClientManager is not connected. Call connect() first."
             )
         return self._client[self._database_name]
+
+    async def ensure_indexes(self) -> None:
+        """Create required indexes on the database collections."""
+        db = self.get_database()
+
+        await db["entity_mentions"].create_index(
+            [("content", "text"), ("parsed_representation", "text")],
+            name="entity_mentions_text",
+        )
+
+        await db["decisions"].create_index(
+            "about_entity_mention",
+            name="decisions_about_entity_mention",
+        )
