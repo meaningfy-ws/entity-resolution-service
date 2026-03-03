@@ -1,6 +1,6 @@
 from typing import Any
 
-from erspec.models.core import Decision
+from erspec.models.core import Decision, EntityMentionIdentifier
 
 from ers.adapters.mongodb.base import BaseMongoRepository
 from ers.application.dtos import (
@@ -46,12 +46,6 @@ class MongoDecisionRepository(
             ] = filters.similarity_max
         query.update(placement_range)
 
-        if filters.search is not None:
-            query["about_entity_mention.source_id"] = {
-                "$regex": filters.search,
-                "$options": "i",
-            }
-
         return query
 
     def _build_sort(self, ordering: DecisionOrdering | None) -> list[tuple[str, int]]:
@@ -75,8 +69,21 @@ class MongoDecisionRepository(
         self,
         filters: DecisionFilters,
         pagination: PaginationParams,
+        mention_identifiers: list[EntityMentionIdentifier] | None = None,
     ) -> PaginatedResult[Decision]:
         query = self._build_query(filters)
+
+        if mention_identifiers is not None:
+            id_docs = [
+                {
+                    "source_id": mi.source_id,
+                    "request_id": mi.request_id,
+                    "entity_type": mi.entity_type,
+                }
+                for mi in mention_identifiers
+            ]
+            query["about_entity_mention"] = {"$in": id_docs}
+
         sort = self._build_sort(filters.ordering)
         skip = (pagination.page - 1) * pagination.per_page
 
