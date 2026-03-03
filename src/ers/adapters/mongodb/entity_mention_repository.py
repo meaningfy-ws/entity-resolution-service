@@ -54,3 +54,15 @@ class MongoEntityMentionRepository(
         if limit is not None:
             cursor = cursor.limit(limit)
         return [self._from_document(doc) async for doc in cursor]
+
+    async def search_identifiers(
+        self,
+        text: str,
+    ) -> list[EntityMentionIdentifier]:
+        cursor = self._collection.find(
+            {"$text": {"$search": text}},
+            projection={"_id": 1},
+        )
+        return [
+            EntityMentionIdentifier.model_validate(doc["_id"]) async for doc in cursor
+        ]
