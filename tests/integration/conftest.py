@@ -16,6 +16,12 @@ async def mongo_db() -> AsyncDatabase:
     client = AsyncMongoClient(settings.mongo_uri)
     db_name = f"ers_test_{uuid.uuid4().hex[:8]}"
     db = client[db_name]
+
+    await db["entity_mentions"].create_index(
+        [("content", "text"), ("parsed_representation", "text")],
+        name="entity_mentions_text",
+    )
+
     yield db
     await client.drop_database(db_name)
     await client.close()
