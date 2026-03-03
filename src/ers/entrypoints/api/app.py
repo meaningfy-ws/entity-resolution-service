@@ -17,6 +17,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings: Settings = app.state.settings
     manager = MongoClientManager(settings.mongo_uri, settings.mongo_database_name)
     await manager.connect()
+    await manager.ensure_indexes()
     app.state.mongo_db = manager.get_database()
     try:
         yield
