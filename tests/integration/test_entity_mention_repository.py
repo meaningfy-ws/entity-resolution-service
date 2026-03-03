@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from pymongo.asynchronous.database import AsyncDatabase
 
@@ -66,3 +68,63 @@ class TestFindByIdentifiers:
 
         assert len(results) == 1
         assert results[0].identifiedBy.source_id == mention.identifiedBy.source_id
+
+
+class TestSearchIdentifiers:
+    async def test_search_by_content_match(
+        self, repo: MongoEntityMentionRepository
+    ) -> None:
+        mention = EntityMentionFactory.build(
+            content='{"name": "Acme Corporation"}',
+        )
+        await repo.save(mention)
+
+        results = await repo.search_identifiers("Acme")
+
+        assert len(results) == 1
+        assert results[0].source_id == mention.identifiedBy.source_id
+
+    async def test_search_by_parsed_representation_match(
+        self, repo: MongoEntityMentionRepository
+    ) -> None:
+        payload = {"name": "UniqueTestCompany", "country": "US"}
+        mention = EntityMentionFactory.build(
+            parsed_representation=json.dumps(payload),
+        )
+        await repo.save(mention)
+
+        results = await repo.search_identifiers("UniqueTestCompany")
+
+        assert len(results) == 1
+        assert results[0].source_id == mention.identifiedBy.source_id
+
+    async def test_search_no_match_returns_empty(
+        self, repo: MongoEntityMentionRepository
+    ) -> None:
+        mention = EntityMentionFactory.build(
+            content='{"name": "Known Entity"}',
+        )
+        await repo.save(mention)
+
+        results = await repo.search_identifiers("zzzznonexistent")
+
+        assert results == []
+
+    async def test_search_returns_multiple_matches(
+        self, repo: MongoEntityMentionRepository
+    ) -> None:
+        m1 = EntityMentionFactory.build(
+            content='{"name": "Alpha Corp"}',
+        )
+        m2 = EntityMentionFactory.build(
+            content='{"name": "Alpha Industries"}',
+        )
+        m3 = EntityMentionFactory.build(
+            content='{"name": "Beta Ltd"}',
+        )
+        for m in [m1, m2, m3]:
+            await repo.save(m)
+
+        results = await repo.search_identifiers("Alpha")
+
+        assert len(results) == 2
