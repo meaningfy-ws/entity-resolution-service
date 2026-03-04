@@ -5,7 +5,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 from erspec.models.core import Decision
 
-from ers.adapters.mongodb import MongoDecisionRepository
+from ers.adapters.mongodb import MongoCollections, MongoDecisionRepository
 from ers.application.dtos import DecisionFilters, DecisionOrdering, PaginationParams
 from tests.factories import (
     ClusterReferenceFactory,
@@ -18,7 +18,7 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture
 def repo(mongo_db: AsyncDatabase) -> MongoDecisionRepository:
-    return MongoDecisionRepository(mongo_db["decisions"])
+    return MongoDecisionRepository(MongoCollections(mongo_db).decisions)
 
 
 class TestSaveAndFindById:

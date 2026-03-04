@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from pymongo.asynchronous.database import AsyncDatabase
 
-from ers.adapters.mongodb import MongoUserActionRepository
+from ers.adapters.mongodb import MongoCollections, MongoUserActionRepository
 from tests.factories import EntityMentionIdentifierFactory, UserActionFactory
 
 pytestmark = pytest.mark.integration
@@ -11,7 +11,7 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture
 def repo(mongo_db: AsyncDatabase) -> MongoUserActionRepository:
-    return MongoUserActionRepository(mongo_db["user_actions"])
+    return MongoUserActionRepository(MongoCollections(mongo_db).user_actions)
 
 
 class TestSaveAndFindById:

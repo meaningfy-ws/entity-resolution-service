@@ -16,6 +16,7 @@ from erspec.models.core import UserActionType
 
 from ers.adapters.mongodb import (
     MongoCanonicalEntityRepository,
+    MongoCollections,
     MongoDecisionRepository,
     MongoEntityMentionRepository,
     MongoUserActionRepository,
@@ -53,14 +54,20 @@ async def seed(
     settings = get_settings()
     client = AsyncMongoClient(settings.mongo_uri)
     db = client[settings.mongo_database_name]
+    collections = MongoCollections(db)
 
-    for name in ("decisions", "entity_mentions", "canonical_entities", "user_actions"):
+    for name in (
+        MongoCollections.DECISIONS,
+        MongoCollections.ENTITY_MENTIONS,
+        MongoCollections.CANONICAL_ENTITIES,
+        MongoCollections.USER_ACTIONS,
+    ):
         await db[name].drop()
 
-    mention_repo = MongoEntityMentionRepository(db["entity_mentions"])
-    canonical_repo = MongoCanonicalEntityRepository(db["canonical_entities"])
-    decision_repo = MongoDecisionRepository(db["decisions"])
-    action_repo = MongoUserActionRepository(db["user_actions"])
+    mention_repo = MongoEntityMentionRepository(collections.entity_mentions)
+    canonical_repo = MongoCanonicalEntityRepository(collections.canonical_entities)
+    decision_repo = MongoDecisionRepository(collections.decisions)
+    action_repo = MongoUserActionRepository(collections.user_actions)
 
     # generate entity mentions across requests
     request_ids = [f"req-{i:04d}" for i in range(1, num_requests + 1)]

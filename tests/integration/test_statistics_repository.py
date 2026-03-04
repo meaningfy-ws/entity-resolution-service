@@ -5,7 +5,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 from erspec.models.core import UserActionType
 
-from ers.adapters.mongodb import MongoStatisticsRepository
+from ers.adapters.mongodb import MongoCollections, MongoStatisticsRepository
 from ers.application.dtos import StatisticsFilters
 from tests.factories import (
     CanonicalEntityIdentifierFactory,
@@ -31,10 +31,11 @@ async def _seed_data(db: AsyncDatabase) -> None:
         MongoUserActionRepository,
     )
 
-    mention_repo = MongoEntityMentionRepository(db["entity_mentions"])
-    decision_repo = MongoDecisionRepository(db["decisions"])
-    canonical_repo = MongoCanonicalEntityRepository(db["canonical_entities"])
-    action_repo = MongoUserActionRepository(db["user_actions"])
+    collections = MongoCollections(db)
+    mention_repo = MongoEntityMentionRepository(collections.entity_mentions)
+    decision_repo = MongoDecisionRepository(collections.decisions)
+    canonical_repo = MongoCanonicalEntityRepository(collections.canonical_entities)
+    action_repo = MongoUserActionRepository(collections.user_actions)
 
     mentions = EntityMentionFactory.batch(4)
     mentions[0].identifiedBy.entity_type = "ORGANISATION"

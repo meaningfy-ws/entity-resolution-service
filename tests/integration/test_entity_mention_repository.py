@@ -4,7 +4,7 @@ import pytest
 from pymongo.asynchronous.database import AsyncDatabase
 
 
-from ers.adapters.mongodb import MongoEntityMentionRepository
+from ers.adapters.mongodb import MongoCollections, MongoEntityMentionRepository
 from tests.factories import EntityMentionFactory, EntityMentionIdentifierFactory
 
 pytestmark = pytest.mark.integration
@@ -12,7 +12,7 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture
 def repo(mongo_db: AsyncDatabase) -> MongoEntityMentionRepository:
-    return MongoEntityMentionRepository(mongo_db["entity_mentions"])
+    return MongoEntityMentionRepository(MongoCollections(mongo_db).entity_mentions)
 
 
 class TestSaveAndFindById:

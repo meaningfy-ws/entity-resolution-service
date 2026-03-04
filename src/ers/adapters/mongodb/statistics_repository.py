@@ -1,5 +1,6 @@
 from pymongo.asynchronous.database import AsyncDatabase
 
+from ers.adapters.mongodb.collections import MongoCollections
 from ers.application.dtos import (
     CurationStatistics,
     RegistryStatistics,
@@ -14,7 +15,7 @@ class MongoStatisticsRepository(StatisticsRepositoryPort):
     """Aggregates statistics across multiple collections."""
 
     def __init__(self, database: AsyncDatabase) -> None:
-        self._db = database
+        self._collections = MongoCollections(database)
 
     def _build_time_filter(self, filters: StatisticsFilters) -> dict:
         match: dict = {}
@@ -40,7 +41,9 @@ class MongoStatisticsRepository(StatisticsRepositoryPort):
             decision_filter["about_entity_mention.entity_type"] = (
                 filters.entity_type.value
             )
-        total_decisions = await self._db["decisions"].count_documents(decision_filter)
+        total_decisions = await self._collections.decisions.count_documents(
+            decision_filter
+        )
 
         pipeline: list[dict] = []
         if match:
@@ -48,7 +51,7 @@ class MongoStatisticsRepository(StatisticsRepositoryPort):
         pipeline.append({"$group": {"_id": "$action_type", "count": {"$sum": 1}}})
 
         counts: dict[str, int] = {}
-        cursor = await self._db["user_actions"].aggregate(pipeline)
+        cursor = await self._collections.user_actions.aggregate(pipeline)
         async for doc in cursor:
             counts[doc["_id"]] = doc["count"]
 
@@ -67,22 +70,22 @@ class MongoStatisticsRepository(StatisticsRepositoryPort):
         if filters.entity_type is not None:
             entity_filter["_id.entity_type"] = filters.entity_type.value
 
-        total_entity_mentions = await self._db["entity_mentions"].count_documents(
+        total_entity_mentions = await self._collections.entity_mentions.count_documents(
             entity_filter
         )
-        total_canonical_entities = await self._db["canonical_entities"].count_documents(
-            {}
+        total_canonical_entities = (
+            await self._collections.canonical_entities.count_documents({})
         )
 
         avg_pipeline: list[dict] = [
             {"$project": {"size": {"$size": {"$ifNull": ["$equivalent_to", []]}}}},
             {"$group": {"_id": None, "avg": {"$avg": "$size"}}},
         ]
-        avg_cursor = await self._db["canonical_entities"].aggregate(avg_pipeline)
+        avg_cursor = await self._collections.canonical_entities.aggregate(avg_pipeline)
         avg_result = await avg_cursor.to_list()
         average_cluster_size = avg_result[0]["avg"] if avg_result else 0.0
 
-        distinct_requests = await self._db["entity_mentions"].distinct(
+        distinct_requests = await self._collections.entity_mentions.distinct(
             "_id.request_id",
             entity_filter,
         )

@@ -1,7 +1,7 @@
 import pytest
 from pymongo.asynchronous.database import AsyncDatabase
 
-from ers.adapters.mongodb import MongoCanonicalEntityRepository
+from ers.adapters.mongodb import MongoCanonicalEntityRepository, MongoCollections
 from tests.factories import CanonicalEntityIdentifierFactory
 
 pytestmark = pytest.mark.integration
@@ -9,7 +9,7 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture
 def repo(mongo_db: AsyncDatabase) -> MongoCanonicalEntityRepository:
-    return MongoCanonicalEntityRepository(mongo_db["canonical_entities"])
+    return MongoCanonicalEntityRepository(MongoCollections(mongo_db).canonical_entities)
 
 
 class TestSaveAndFindById:
