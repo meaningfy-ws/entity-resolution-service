@@ -147,7 +147,7 @@ class BulkItemResult(FrozenDTO):
 class BulkActionRequest(FrozenDTO):
     """Request body for bulk accept/reject operations."""
 
-    decision_ids: list[str] = Field(..., min_length=1, max_length=BULK_ACTION_MAX_SIZE)
+    decision_ids: set[str] = Field(..., min_length=1, max_length=BULK_ACTION_MAX_SIZE)
 
 
 class BulkActionResponse(FrozenDTO):

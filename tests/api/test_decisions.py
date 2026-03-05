@@ -322,7 +322,7 @@ class TestBulkAcceptDecisions:
         )
 
         decision_curation_service.bulk_accept_decisions.assert_called_once_with(
-            ["d-1"], actor="anonymous"
+            {"d-1"}, actor="anonymous"
         )
 
     async def test_rejects_empty_list(
