@@ -1,5 +1,8 @@
 """Seed script to populate FerretDB with sample data for manual testing.
 
+Warning:
+    This will drop existing data.
+
 Usage:
     poetry run python -m scripts.seed_db
     poetry run python -m scripts.seed_db --mentions 200 --clusters 50 --requests 10
