@@ -1,0 +1,51 @@
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Response, status
+
+from ers.application.auth_dtos import CreateUserRequest, UserPatchRequest, UserResponse
+from ers.application.services import UserManagementService
+from ers.entrypoints.api.auth import AdminUser
+from ers.entrypoints.api.dependencies import get_user_management_service
+
+router = APIRouter(prefix="/users", tags=["Users"])
+
+
+@router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def create_user(
+    body: CreateUserRequest,
+    _admin: AdminUser,
+    service: Annotated[UserManagementService, Depends(get_user_management_service)],
+) -> UserResponse:
+    """Create a new user (admin only)."""
+    return await service.create_user(body)
+
+
+@router.get("", response_model=list[UserResponse])
+async def list_users(
+    _admin: AdminUser,
+    service: Annotated[UserManagementService, Depends(get_user_management_service)],
+) -> list[UserResponse]:
+    """List all users (admin only)."""
+    return await service.list_users()
+
+
+@router.patch("/{user_id}", response_model=UserResponse)
+async def patch_user(
+    user_id: str,
+    body: UserPatchRequest,
+    _admin: AdminUser,
+    service: Annotated[UserManagementService, Depends(get_user_management_service)],
+) -> UserResponse:
+    """Update user flags (admin only)."""
+    return await service.patch_user(user_id, body)
+
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(
+    user_id: str,
+    _admin: AdminUser,
+    service: Annotated[UserManagementService, Depends(get_user_management_service)],
+) -> Response:
+    """Delete a user (admin only)."""
+    await service.delete_user(user_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
