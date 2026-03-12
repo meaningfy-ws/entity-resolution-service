@@ -2,9 +2,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
 
-from ers.application.auth_dtos import CreateUserRequest, UserPatchRequest, UserResponse
+from ers.application.auth_dtos import (
+    CreateUserRequest,
+    UserContext,
+    UserPatchRequest,
+    UserResponse,
+)
 from ers.application.services import UserManagementService
-from ers.entrypoints.api.auth import AdminUser
+from ers.entrypoints.api.auth import AdminUser, CurrentUser
 from ers.entrypoints.api.dependencies import get_user_management_service
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -49,3 +54,11 @@ async def delete_user(
     """Delete a user (admin only)."""
     await service.delete_user(user_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/me", response_model=UserContext)
+async def get_current_user(
+    user: CurrentUser,
+) -> UserContext:
+    """Get current authenticated user."""
+    return user
