@@ -2,6 +2,7 @@ from unittest.mock import AsyncMock, create_autospec
 
 import pytest
 
+from ers.application.dtos import PaginatedResult, PaginationParams
 from ers.application.auth_dtos import CreateUserRequest, UserPatchRequest
 from ers.application.exceptions import ApplicationError, NotFoundError
 from ers.application.ports.password_hasher import PasswordHasher
@@ -68,29 +69,41 @@ class TestCreateUser:
 
 
 class TestListUsers:
-    async def test_returns_all_users(
+    async def test_returns_paginated_users(
         self,
         service: UserManagementService,
         user_repository: AsyncMock,
     ) -> None:
         users = UserFactory.batch(3)
-        user_repository.find_all.return_value = users
+        user_repository.find_paginated.return_value = PaginatedResult(
+            count=3,
+            previous=None,
+            next=None,
+            results=users,
+        )
 
-        result = await service.list_users()
+        result = await service.list_users(PaginationParams(page=1, per_page=20))
 
-        assert len(result) == 3
-        assert result[0].email == users[0].email
+        assert result.count == 3
+        assert len(result.results) == 3
+        assert result.results[0].email == users[0].email
 
     async def test_returns_empty_when_no_users(
         self,
         service: UserManagementService,
         user_repository: AsyncMock,
     ) -> None:
-        user_repository.find_all.return_value = []
+        user_repository.find_paginated.return_value = PaginatedResult(
+            count=0,
+            previous=None,
+            next=None,
+            results=[],
+        )
 
-        result = await service.list_users()
+        result = await service.list_users(PaginationParams(page=1, per_page=20))
 
-        assert result == []
+        assert result.count == 0
+        assert result.results == []
 
 
 class TestPatchUser:

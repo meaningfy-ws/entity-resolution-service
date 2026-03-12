@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock
 
 from httpx import AsyncClient
 
+from ers.application.dtos import PaginatedResult
 from ers.application.auth_dtos import UserContext, UserResponse
 from ers.entrypoints.api.auth import get_current_user
 
@@ -63,21 +64,31 @@ class TestListUsers:
         client: AsyncClient,
         user_management_service: AsyncMock,
     ) -> None:
-        user_management_service.list_users.return_value = [
-            UserResponse(
-                id="u-1",
-                email="a@example.com",
-                is_active=True,
-                is_superuser=False,
-                is_verified=True,
-                created_at=datetime.now(timezone.utc),
-            ),
-        ]
+        user_management_service.list_users.return_value = PaginatedResult(
+            count=1,
+            previous=None,
+            next=None,
+            results=[
+                UserResponse(
+                    id="u-1",
+                    email="a@example.com",
+                    is_active=True,
+                    is_superuser=False,
+                    is_verified=True,
+                    created_at=datetime.now(timezone.utc),
+                ),
+            ],
+        )
 
-        response = await client.get(USERS_URL)
+        response = await client.get(f"{USERS_URL}?page=2&per_page=5")
 
         assert response.status_code == 200
-        assert len(response.json()) == 1
+        data = response.json()
+        assert data["count"] == 1
+        assert len(data["results"]) == 1
+        pagination = user_management_service.list_users.call_args.args[0]
+        assert pagination.page == 2
+        assert pagination.per_page == 5
 
     async def test_non_admin_gets_403(
         self,
