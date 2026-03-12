@@ -14,6 +14,7 @@ from ers.application.services import (
     DecisionCurationService,
     EntityService,
     StatisticsService,
+    UserActionService,
     UserManagementService,
 )
 from ers.config import Settings
@@ -25,6 +26,7 @@ from ers.entrypoints.api.dependencies import (
     get_decision_curation_service,
     get_entity_service,
     get_statistics_service,
+    get_user_action_service,
     get_user_management_service,
 )
 
@@ -77,6 +79,11 @@ def user_management_service() -> AsyncMock:
 
 
 @pytest.fixture
+def user_action_service() -> AsyncMock:
+    return create_autospec(UserActionService, instance=True)
+
+
+@pytest.fixture
 def app(
     settings: Settings,
     decision_curation_service: AsyncMock,
@@ -84,6 +91,7 @@ def app(
     entity_service: AsyncMock,
     statistics_service: AsyncMock,
     auth_service: AsyncMock,
+    user_action_service: AsyncMock,
     user_management_service: AsyncMock,
 ) -> FastAPI:
     app = create_app(settings=settings)
@@ -97,6 +105,7 @@ def app(
     app.dependency_overrides[get_entity_service] = lambda: entity_service
     app.dependency_overrides[get_statistics_service] = lambda: statistics_service
     app.dependency_overrides[get_auth_service] = lambda: auth_service
+    app.dependency_overrides[get_user_action_service] = lambda: user_action_service
     app.dependency_overrides[get_user_management_service] = lambda: (
         user_management_service
     )
