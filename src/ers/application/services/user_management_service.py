@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
+from ers.application.dtos import PaginatedResult, PaginationParams
 from ers.application.auth_dtos import CreateUserRequest, UserPatchRequest, UserResponse
 from ers.application.exceptions import ApplicationError, NotFoundError
 from ers.application.ports.password_hasher import PasswordHasher
@@ -49,10 +50,18 @@ class UserManagementService:
         await self._user_repo.save(user)
         return _to_user_response(user)
 
-    async def list_users(self) -> list[UserResponse]:
-        """Return all users."""
-        users = await self._user_repo.find_all()
-        return [_to_user_response(u) for u in users]
+    async def list_users(
+        self,
+        pagination: PaginationParams,
+    ) -> PaginatedResult[UserResponse]:
+        """Return paginated users."""
+        users = await self._user_repo.find_paginated(pagination)
+        return PaginatedResult(
+            count=users.count,
+            previous=users.previous,
+            next=users.next,
+            results=[_to_user_response(user) for user in users.results],
+        )
 
     async def patch_user(self, user_id: str, dto: UserPatchRequest) -> UserResponse:
         """Update user flags (admin operation)."""

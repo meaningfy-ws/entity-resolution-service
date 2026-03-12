@@ -2,6 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
 
+from ers.application.dtos import PaginatedResult
 from ers.application.auth_dtos import (
     CreateUserRequest,
     UserContext,
@@ -11,6 +12,7 @@ from ers.application.auth_dtos import (
 from ers.application.services import UserManagementService
 from ers.entrypoints.api.auth import AdminUser, CurrentUser
 from ers.entrypoints.api.dependencies import get_user_management_service
+from ers.entrypoints.api.v1.schemas import Pagination
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -25,13 +27,14 @@ async def create_user(
     return await service.create_user(body)
 
 
-@router.get("", response_model=list[UserResponse])
+@router.get("", response_model=PaginatedResult[UserResponse])
 async def list_users(
+    pagination: Pagination,
     _admin: AdminUser,
     service: Annotated[UserManagementService, Depends(get_user_management_service)],
-) -> list[UserResponse]:
+) -> PaginatedResult[UserResponse]:
     """List all users (admin only)."""
-    return await service.list_users()
+    return await service.list_users(pagination)
 
 
 @router.patch("/{user_id}", response_model=UserResponse)
