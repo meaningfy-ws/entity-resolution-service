@@ -96,8 +96,14 @@ async def get_user_repository(
 
 async def get_user_action_service(
     repo: Annotated[UserActionRepository, Depends(get_user_action_repository)],
+    entity_repo: Annotated[
+        EntityMentionRepository, Depends(get_entity_mention_repository)
+    ],
 ) -> UserActionService:
-    return UserActionService(user_action_repository=repo)
+    return UserActionService(
+        user_action_repository=repo,
+        entity_mention_repository=entity_repo,
+    )
 
 
 async def get_decision_curation_service(
