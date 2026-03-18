@@ -1,0 +1,292 @@
+"""Step definitions for user_management.feature.
+
+Tests the admin user management endpoints (CRUD) through the FastAPI test client
+with mocked UserManagementService.
+"""
+
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+from unittest.mock import AsyncMock
+
+from pytest_bdd import given, parsers, scenario, then, when
+from starlette.testclient import TestClient
+
+from ers.commons.domain.data_transfer_objects import PaginatedResult
+from ers.commons.services.exceptions import ApplicationError, NotFoundError
+from ers.users.domain.data_transfer_objects import UserResponse
+
+FEATURE = str(Path(__file__).resolve().parent / "user_management.feature")
+
+USERS_URL = "/api/v1/users"
+
+
+# ---------------------------------------------------------------------------
+# Scenario bindings
+# ---------------------------------------------------------------------------
+
+
+@scenario(FEATURE, "Create a new user")
+def test_create_user():
+    pass
+
+
+@scenario(FEATURE, "Create a user with a duplicate email")
+def test_create_duplicate():
+    pass
+
+
+@scenario(FEATURE, "List all users with pagination")
+def test_list_users():
+    pass
+
+
+@scenario(FEATURE, "Update user flags")
+def test_update_flags():
+    pass
+
+
+@scenario(FEATURE, "Update a non-existent user")
+def test_update_not_found():
+    pass
+
+
+@scenario(FEATURE, "Delete a user")
+def test_delete_user():
+    pass
+
+
+@scenario(FEATURE, "Delete a non-existent user")
+def test_delete_not_found():
+    pass
+
+
+@scenario(FEATURE, "View current authenticated user")
+def test_view_current_user():
+    pass
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _make_user_response(
+    user_id: str = "u-1",
+    email: str = "user@example.com",
+    **overrides: Any,
+) -> UserResponse:
+    defaults = {
+        "id": user_id,
+        "email": email,
+        "is_active": True,
+        "is_superuser": False,
+        "is_verified": False,
+        "created_at": datetime.now(UTC),
+    }
+    defaults.update(overrides)
+    return UserResponse(**defaults)
+
+
+# ---------------------------------------------------------------------------
+# Background
+# ---------------------------------------------------------------------------
+
+
+@given("the administrator is authenticated")
+def admin_authenticated() -> None:
+    # The conftest already sets up an admin user
+    pass
+
+
+# ---------------------------------------------------------------------------
+# Given
+# ---------------------------------------------------------------------------
+
+
+@given(parsers.parse('a user exists with email "{email}"'))
+def user_with_email(
+    ctx: dict[str, Any],
+    email: str,
+    user_management_service: AsyncMock,
+) -> None:
+    user_management_service.create_user.side_effect = ApplicationError(
+        "A user with this email already exists",
+    )
+    ctx["existing_email"] = email
+
+
+@given(parsers.parse("{count:d} user accounts exist"))
+def n_users_exist(
+    count: int,
+    user_management_service: AsyncMock,
+) -> None:
+    # Returns will be configured per-scenario in the When step
+    pass
+
+
+@given("a user account exists", target_fixture="user_id")
+def user_account_exists(
+    user_management_service: AsyncMock,
+) -> str:
+    user_management_service.patch_user.return_value = _make_user_response()
+    user_management_service.delete_user.return_value = None
+    return "u-1"
+
+
+# ---------------------------------------------------------------------------
+# When
+# ---------------------------------------------------------------------------
+
+
+@when(
+    parsers.parse('the administrator creates a user with email "{email}"'),
+    target_fixture="response",
+)
+def admin_creates_user(
+    client: TestClient,
+    email: str,
+    user_management_service: AsyncMock,
+) -> Any:
+    if not user_management_service.create_user.side_effect:
+        user_management_service.create_user.return_value = _make_user_response(email=email)
+    return client.post(
+        USERS_URL,
+        json={"email": email, "password": "securepassword"},
+    )
+
+
+@when(
+    parsers.parse("the administrator requests the user list with {per_page:d} items per page"),
+    target_fixture="response",
+)
+def admin_lists_users(
+    client: TestClient,
+    per_page: int,
+    user_management_service: AsyncMock,
+) -> Any:
+    users = [_make_user_response(f"u-{i}", f"u{i}@example.com") for i in range(per_page)]
+    user_management_service.list_users.return_value = PaginatedResult(
+        count=15,
+        results=users,
+    )
+    return client.get(USERS_URL, params={"per_page": per_page})
+
+
+@when(
+    parsers.parse('the administrator sets the user\'s "{flag}" to {value}'),
+    target_fixture="response",
+)
+def admin_patches_flag(
+    client: TestClient,
+    flag: str,
+    value: str,
+    user_id: str,
+    user_management_service: AsyncMock,
+) -> Any:
+    bool_value = value.lower() == "true"
+    user_management_service.patch_user.return_value = _make_user_response(
+        **{flag: bool_value},
+    )
+    return client.patch(
+        f"{USERS_URL}/{user_id}",
+        json={flag: bool_value},
+    )
+
+
+@when(
+    "the administrator attempts to update a user that does not exist",
+    target_fixture="response",
+)
+def admin_patches_nonexistent(
+    client: TestClient,
+    user_management_service: AsyncMock,
+) -> Any:
+    user_management_service.patch_user.side_effect = NotFoundError("User", "nonexistent")
+    return client.patch(
+        f"{USERS_URL}/nonexistent",
+        json={"is_active": False},
+    )
+
+
+@when("the administrator deletes the user", target_fixture="response")
+def admin_deletes_user(client: TestClient, user_id: str) -> Any:
+    return client.delete(f"{USERS_URL}/{user_id}")
+
+
+@when(
+    "the administrator attempts to delete a user that does not exist",
+    target_fixture="response",
+)
+def admin_deletes_nonexistent(
+    client: TestClient,
+    user_management_service: AsyncMock,
+) -> Any:
+    user_management_service.delete_user.side_effect = NotFoundError("User", "nonexistent")
+    return client.delete(f"{USERS_URL}/nonexistent")
+
+
+@when(
+    "an authenticated user requests their own profile",
+    target_fixture="response",
+)
+def request_own_profile(client: TestClient) -> Any:
+    return client.get(f"{USERS_URL}/me")
+
+
+# ---------------------------------------------------------------------------
+# Then
+# ---------------------------------------------------------------------------
+
+
+@then("the user account is created")
+def user_created(response: Any) -> None:
+    assert response.status_code == 201
+
+
+@then("the response contains the user details without the password")
+def no_password_in_response(response: Any) -> None:
+    data = response.json()
+    assert "email" in data
+    assert "password" not in data
+    assert "hashed_password" not in data
+
+
+@then("the creation is rejected because the email is already in use")
+def duplicate_rejected(response: Any) -> None:
+    assert response.status_code == 400
+
+
+@then(parsers.parse("{count:d} users are returned"))
+def n_users_returned(response: Any, count: int) -> None:
+    assert response.status_code == 200
+    assert len(response.json()["results"]) == count
+
+
+@then(parsers.parse("the total count is {count:d}"))
+def total_count_is(response: Any, count: int) -> None:
+    assert response.json()["count"] == count
+
+
+@then("the user record reflects the updated flag")
+def flag_updated(response: Any) -> None:
+    assert response.status_code == 200
+
+
+@then("the system responds with a not found error")
+def not_found(response: Any) -> None:
+    assert response.status_code == 404
+
+
+@then("the user is removed from the system")
+def user_removed(response: Any) -> None:
+    assert response.status_code == 204
+
+
+@then("the response contains the user's email and role flags")
+def response_has_profile(response: Any) -> None:
+    assert response.status_code == 200
+    data = response.json()
+    assert "email" in data
+    assert "is_superuser" in data
+    assert "is_verified" in data
