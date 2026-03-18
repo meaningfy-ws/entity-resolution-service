@@ -1,19 +1,19 @@
 """Step definitions for authentication.feature.
 
 Tests the POST /api/v1/auth/* endpoints (register, login, refresh) through
-the FastAPI test client with mocked AuthService.
+the FastAPI test client. Repository + adapter mocks let real AuthService logic
+run end-to-end.
 """
 
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 from pytest_bdd import given, parsers, scenario, then, when
 from starlette.testclient import TestClient
 
-from ers.users.domain.data_transfer_objects import TokenResponse, UserResponse
 from ers.users.domain.exceptions import AuthenticationError
+from tests.unit.factories import UserFactory
 
 FEATURE = str(Path(__file__).resolve().parent / "authentication.feature")
 
@@ -81,46 +81,74 @@ def test_refresh_wrong_type():
 
 
 @given(parsers.parse('a user account exists with email "{email}"'))
-def user_exists(ctx: dict[str, Any], email: str, auth_service: AsyncMock) -> None:
-    auth_service.register.side_effect = AuthenticationError("Registration failed")
+def user_exists(ctx: dict[str, Any], email: str, user_repository: AsyncMock) -> None:
+    user = UserFactory.build(email=email, hashed_password="hashed:securepassword")
+    user_repository.find_by_email.return_value = user
     ctx["existing_email"] = email
 
 
 @given("a registered and active user exists")
-def registered_active_user(ctx: dict[str, Any], auth_service: AsyncMock) -> None:
-    auth_service.login.return_value = TokenResponse(
-        access_token="access-tok",
-        refresh_token="refresh-tok",
+def registered_active_user(
+    ctx: dict[str, Any],
+    user_repository: AsyncMock,
+    token_service: MagicMock,
+) -> None:
+    user = UserFactory.build(
+        email="active@example.com",
+        hashed_password="hashed:securepassword",
+        is_active=True,
     )
+    user_repository.find_by_email.return_value = user
+    token_service.create_access_token.return_value = "access-tok"
+    token_service.create_refresh_token.return_value = "refresh-tok"
     ctx["user_email"] = "active@example.com"
     ctx["user_password"] = "securepassword"
 
 
 @given("a registered user exists who has been deactivated")
-def deactivated_user(ctx: dict[str, Any], auth_service: AsyncMock) -> None:
-    auth_service.login.side_effect = AuthenticationError("Invalid credentials")
+def deactivated_user(
+    ctx: dict[str, Any],
+    user_repository: AsyncMock,
+) -> None:
+    user = UserFactory.build(
+        email="inactive@example.com",
+        hashed_password="hashed:securepassword",
+        is_active=False,
+    )
+    user_repository.find_by_email.return_value = user
     ctx["user_email"] = "inactive@example.com"
     ctx["user_password"] = "securepassword"
 
 
 @given("a user has a valid refresh token")
-def valid_refresh_token(ctx: dict[str, Any], auth_service: AsyncMock) -> None:
-    auth_service.refresh.return_value = TokenResponse(
-        access_token="new-access",
-        refresh_token="new-refresh",
-    )
+def valid_refresh_token(
+    ctx: dict[str, Any],
+    user_repository: AsyncMock,
+    token_service: MagicMock,
+) -> None:
+    user = UserFactory.build(is_active=True)
+    token_service.decode_token.return_value = {"type": "refresh", "sub": user.id}
+    user_repository.find_by_id.return_value = user
+    token_service.create_access_token.return_value = "new-access"
+    token_service.create_refresh_token.return_value = "new-refresh"
     ctx["refresh_token"] = "valid-refresh-tok"
 
 
 @given("a user has an expired refresh token")
-def expired_refresh_token(ctx: dict[str, Any], auth_service: AsyncMock) -> None:
-    auth_service.refresh.side_effect = AuthenticationError("Invalid token")
+def expired_refresh_token(
+    ctx: dict[str, Any],
+    token_service: MagicMock,
+) -> None:
+    token_service.decode_token.side_effect = AuthenticationError("Invalid token")
     ctx["refresh_token"] = "expired-refresh-tok"
 
 
 @given("a user has a valid access token")
-def valid_access_token(ctx: dict[str, Any], auth_service: AsyncMock) -> None:
-    auth_service.refresh.side_effect = AuthenticationError("Invalid token type")
+def valid_access_token(
+    ctx: dict[str, Any],
+    token_service: MagicMock,
+) -> None:
+    token_service.decode_token.return_value = {"type": "access", "sub": "user-id"}
     ctx["access_token"] = "valid-access-tok"
 
 
@@ -135,16 +163,10 @@ def valid_access_token(ctx: dict[str, Any], auth_service: AsyncMock) -> None:
 )
 def register_new_user(
     client: TestClient,
-    auth_service: AsyncMock,
+    user_repository: AsyncMock,
 ) -> Any:
-    auth_service.register.return_value = UserResponse(
-        id="u-new",
-        email="new@example.com",
-        is_active=True,
-        is_superuser=False,
-        is_verified=False,
-        created_at=datetime.now(UTC),
-    )
+    user_repository.find_by_email.return_value = None
+    user_repository.save.return_value = None
     return client.post(
         f"{AUTH_URL}/register",
         json={"email": "new@example.com", "password": "securepassword"},
@@ -186,9 +208,7 @@ def login_valid(client: TestClient, ctx: dict[str, Any]) -> Any:
 def login_wrong_password(
     client: TestClient,
     ctx: dict[str, Any],
-    auth_service: AsyncMock,
 ) -> Any:
-    auth_service.login.side_effect = AuthenticationError("Invalid credentials")
     return client.post(
         f"{AUTH_URL}/login",
         json={"email": ctx["user_email"], "password": "wrongpassword"},
@@ -199,8 +219,8 @@ def login_wrong_password(
     "a user logs in with an email that is not registered",
     target_fixture="response",
 )
-def login_nonexistent(client: TestClient, auth_service: AsyncMock) -> Any:
-    auth_service.login.side_effect = AuthenticationError("Invalid credentials")
+def login_nonexistent(client: TestClient, user_repository: AsyncMock) -> Any:
+    user_repository.find_by_email.return_value = None
     return client.post(
         f"{AUTH_URL}/login",
         json={"email": "nobody@example.com", "password": "anypassword"},

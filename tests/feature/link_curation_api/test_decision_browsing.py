@@ -2,10 +2,10 @@
 
 Tests the GET /api/v1/curation/decisions endpoint with filtering, search,
 ordering, and pagination through the FastAPI test client.
+Repository mocks let real DecisionCurationService logic run end-to-end.
 """
 
 import math
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock
@@ -14,9 +14,9 @@ from pytest_bdd import given, parsers, scenario, then, when
 from starlette.testclient import TestClient
 
 from ers.commons.domain.data_transfer_objects import PaginatedResult
-from ers.curation.domain.data_transfer_objects import DecisionSummary, EntityMentionPreview
 from tests.unit.factories import (
-    ClusterReferenceFactory,
+    DecisionFactory,
+    EntityMentionFactory,
     EntityMentionIdentifierFactory,
 )
 
@@ -91,16 +91,32 @@ def test_beyond_last_page():
 # ---------------------------------------------------------------------------
 
 
-def _make_summary(decision_id: str = "decision-1") -> DecisionSummary:
-    return DecisionSummary(
-        id=decision_id,
-        about_entity_mention=EntityMentionPreview(
-            identified_by=EntityMentionIdentifierFactory.build(),
-            parsed_representation='{"name": "Example"}',
-        ),
-        current_placement=ClusterReferenceFactory.build(),
-        created_at=datetime.now(UTC),
+def _make_decision_with_mention(decision_id: str = "decision-1"):
+    """Create a Decision and a matching EntityMention sharing the same identifier."""
+    identifier = EntityMentionIdentifierFactory.build()
+    decision = DecisionFactory.build(id=decision_id, about_entity_mention=identifier)
+    mention = EntityMentionFactory.build(identifiedBy=identifier)
+    return decision, mention
+
+
+def _setup_decisions(
+    decision_repository: AsyncMock,
+    entity_mention_repository: AsyncMock,
+    count: int,
+    *,
+    prefix: str = "d",
+):
+    """Wire repository mocks to return *count* decisions with matching mentions."""
+    pairs = [_make_decision_with_mention(f"{prefix}-{i}") for i in range(count)]
+    decisions = [d for d, _ in pairs]
+    mentions = [m for _, m in pairs]
+
+    decision_repository.find_with_filters.return_value = PaginatedResult(
+        count=count,
+        results=decisions,
     )
+    entity_mention_repository.find_by_identifiers.return_value = mentions
+    return decisions, mentions
 
 
 # ---------------------------------------------------------------------------
@@ -110,36 +126,28 @@ def _make_summary(decision_id: str = "decision-1") -> DecisionSummary:
 
 @given("multiple decisions exist in the decision store")
 def multiple_decisions(
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
+    entity_mention_repository: AsyncMock,
 ) -> None:
-    summaries = [_make_summary(f"d-{i}") for i in range(3)]
-    decision_curation_service.list_decisions.return_value = PaginatedResult(
-        count=3,
-        results=summaries,
-    )
+    _setup_decisions(decision_repository, entity_mention_repository, 3)
 
 
 @given(
     "decisions exist with confidence scores above and below the curation threshold",
 )
 def decisions_above_below_threshold(
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
+    entity_mention_repository: AsyncMock,
 ) -> None:
-    low = _make_summary("d-low")
-    decision_curation_service.list_decisions.return_value = PaginatedResult(
-        count=1,
-        results=[low],
-    )
+    _setup_decisions(decision_repository, entity_mention_repository, 1, prefix="d-low")
 
 
 @given("decisions exist with varying confidence scores")
 def decisions_varying_confidence(
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
+    entity_mention_repository: AsyncMock,
 ) -> None:
-    decision_curation_service.list_decisions.return_value = PaginatedResult(
-        count=2,
-        results=[_make_summary("d-1"), _make_summary("d-2")],
-    )
+    _setup_decisions(decision_repository, entity_mention_repository, 2)
 
 
 @given(parsers.parse('decisions exist for entity types "{type_a}" and "{type_b}"'))
@@ -147,61 +155,62 @@ def decisions_for_entity_types(
     ctx: dict[str, Any],
     type_a: str,
     type_b: str,
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
+    entity_mention_repository: AsyncMock,
 ) -> None:
-    decision_curation_service.list_decisions.return_value = PaginatedResult(
-        count=1,
-        results=[_make_summary("d-org")],
-    )
+    _setup_decisions(decision_repository, entity_mention_repository, 1, prefix="d-org")
     ctx["entity_types"] = (type_a, type_b)
 
 
 @given("decisions exist with varying similarity scores")
 def decisions_varying_similarity(
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
+    entity_mention_repository: AsyncMock,
 ) -> None:
-    decision_curation_service.list_decisions.return_value = PaginatedResult(
-        count=2,
-        results=[_make_summary("d-1"), _make_summary("d-2")],
-    )
+    _setup_decisions(decision_repository, entity_mention_repository, 2)
 
 
 @given("multiple decisions exist with different timestamps and scores")
 def decisions_different_timestamps(
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
+    entity_mention_repository: AsyncMock,
 ) -> None:
-    decision_curation_service.list_decisions.return_value = PaginatedResult(
-        count=3,
-        results=[_make_summary(f"d-{i}") for i in range(3)],
-    )
+    _setup_decisions(decision_repository, entity_mention_repository, 3)
 
 
 @given("decisions exist linked to entity mentions with various names")
 def decisions_with_names(
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
+    entity_mention_repository: AsyncMock,
 ) -> None:
-    decision_curation_service.list_decisions.return_value = PaginatedResult(
+    identifier = EntityMentionIdentifierFactory.build()
+    decision = DecisionFactory.build(id="d-acme", about_entity_mention=identifier)
+    mention = EntityMentionFactory.build(identifiedBy=identifier)
+
+    entity_mention_repository.search_identifiers.return_value = [identifier]
+    decision_repository.find_with_filters.return_value = PaginatedResult(
         count=1,
-        results=[_make_summary("d-acme")],
+        results=[decision],
     )
+    entity_mention_repository.find_by_identifiers.return_value = [mention]
 
 
 @given("decisions exist in the store")
 def decisions_in_store(
-    decision_curation_service: AsyncMock,
+    entity_mention_repository: AsyncMock,
 ) -> None:
-    decision_curation_service.list_decisions.return_value = PaginatedResult(
-        count=0,
-        results=[],
-    )
+    entity_mention_repository.search_identifiers.return_value = []
 
 
 @given(parsers.parse("{count:d} decisions exist in the store"))
 def n_decisions_in_store(
     count: int,
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
+    entity_mention_repository: AsyncMock,
 ) -> None:
-    all_summaries = [_make_summary(f"d-{i}") for i in range(count)]
+    pairs = [_make_decision_with_mention(f"d-{i}") for i in range(count)]
+    all_decisions = [d for d, _ in pairs]
+    all_mentions = [m for _, m in pairs]
 
     def _paginated_response(*_args: Any, **kwargs: Any) -> PaginatedResult:
         pagination = kwargs.get("pagination")
@@ -209,7 +218,7 @@ def n_decisions_in_store(
         per_page = pagination.per_page if pagination else 20
         total_pages = max(1, math.ceil(count / per_page))
         start = (page - 1) * per_page
-        page_items = all_summaries[start : start + per_page]
+        page_items = all_decisions[start : start + per_page]
         return PaginatedResult(
             count=count,
             results=page_items,
@@ -217,7 +226,8 @@ def n_decisions_in_store(
             previous=page - 1 if page > 1 else None,
         )
 
-    decision_curation_service.list_decisions.side_effect = _paginated_response
+    decision_repository.find_with_filters.side_effect = _paginated_response
+    entity_mention_repository.find_by_identifiers.return_value = all_mentions
 
 
 # ---------------------------------------------------------------------------
@@ -346,10 +356,10 @@ def summary_includes_fields(response: Any) -> None:
 @then("only decisions with confidence at or below the threshold are returned")
 def only_low_confidence(
     response: Any,
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
 ) -> None:
     assert response.status_code == 200
-    call_args = decision_curation_service.list_decisions.call_args
+    call_args = decision_repository.find_with_filters.call_args
     filters = call_args.kwargs["filters"]
     assert filters.confidence_max is not None
 
@@ -357,10 +367,10 @@ def only_low_confidence(
 @then("only decisions within the confidence range are returned")
 def confidence_range_applied(
     response: Any,
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
 ) -> None:
     assert response.status_code == 200
-    call_args = decision_curation_service.list_decisions.call_args
+    call_args = decision_repository.find_with_filters.call_args
     filters = call_args.kwargs["filters"]
     assert filters.confidence_min is not None
     assert filters.confidence_max is not None
@@ -370,10 +380,10 @@ def confidence_range_applied(
 def entity_type_filter_applied(
     response: Any,
     entity_type: str,
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
 ) -> None:
     assert response.status_code == 200
-    call_args = decision_curation_service.list_decisions.call_args
+    call_args = decision_repository.find_with_filters.call_args
     filters = call_args.kwargs["filters"]
     assert filters.entity_type is not None
 
@@ -381,10 +391,10 @@ def entity_type_filter_applied(
 @then("only decisions within the similarity range are returned")
 def similarity_range_applied(
     response: Any,
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
 ) -> None:
     assert response.status_code == 200
-    call_args = decision_curation_service.list_decisions.call_args
+    call_args = decision_repository.find_with_filters.call_args
     filters = call_args.kwargs["filters"]
     assert filters.similarity_min is not None
     assert filters.similarity_max is not None
@@ -393,10 +403,10 @@ def similarity_range_applied(
 @then("the decisions are returned in the specified order")
 def ordering_applied(
     response: Any,
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
 ) -> None:
     assert response.status_code == 200
-    call_args = decision_curation_service.list_decisions.call_args
+    call_args = decision_repository.find_with_filters.call_args
     filters = call_args.kwargs["filters"]
     assert filters.ordering is not None
 
@@ -405,12 +415,10 @@ def ordering_applied(
 def search_applied(
     response: Any,
     query: str,
-    decision_curation_service: AsyncMock,
+    entity_mention_repository: AsyncMock,
 ) -> None:
     assert response.status_code == 200
-    call_args = decision_curation_service.list_decisions.call_args
-    filters = call_args.kwargs["filters"]
-    assert filters.search == query
+    entity_mention_repository.search_identifiers.assert_called_once_with(query)
 
 
 @then("an empty result set is returned")
