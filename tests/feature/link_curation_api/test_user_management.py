@@ -1,10 +1,9 @@
 """Step definitions for user_management.feature.
 
-Tests the admin user management endpoints (CRUD) through the FastAPI test client
-with mocked UserManagementService.
+Tests the admin user management endpoints (CRUD) through the FastAPI test client.
+Repository mocks let real UserManagementService logic run end-to-end.
 """
 
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock
@@ -13,8 +12,7 @@ from pytest_bdd import given, parsers, scenario, then, when
 from starlette.testclient import TestClient
 
 from ers.commons.domain.data_transfer_objects import PaginatedResult
-from ers.commons.services.exceptions import ApplicationError, NotFoundError
-from ers.users.domain.data_transfer_objects import UserResponse
+from tests.unit.factories import UserFactory
 
 FEATURE = str(Path(__file__).resolve().parent / "user_management.feature")
 
@@ -67,35 +65,12 @@ def test_view_current_user():
 
 
 # ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _make_user_response(
-    user_id: str = "u-1",
-    email: str = "user@example.com",
-    **overrides: Any,
-) -> UserResponse:
-    defaults = {
-        "id": user_id,
-        "email": email,
-        "is_active": True,
-        "is_superuser": False,
-        "is_verified": False,
-        "created_at": datetime.now(UTC),
-    }
-    defaults.update(overrides)
-    return UserResponse(**defaults)
-
-
-# ---------------------------------------------------------------------------
 # Background
 # ---------------------------------------------------------------------------
 
 
 @given("the administrator is authenticated")
 def admin_authenticated() -> None:
-    # The conftest already sets up an admin user
     pass
 
 
@@ -108,29 +83,26 @@ def admin_authenticated() -> None:
 def user_with_email(
     ctx: dict[str, Any],
     email: str,
-    user_management_service: AsyncMock,
+    user_repository: AsyncMock,
 ) -> None:
-    user_management_service.create_user.side_effect = ApplicationError(
-        "A user with this email already exists",
-    )
+    user = UserFactory.build(email=email)
+    user_repository.find_by_email.return_value = user
     ctx["existing_email"] = email
 
 
 @given(parsers.parse("{count:d} user accounts exist"))
-def n_users_exist(
-    count: int,
-    user_management_service: AsyncMock,
-) -> None:
-    # Returns will be configured per-scenario in the When step
+def n_users_exist(count: int) -> None:
     pass
 
 
 @given("a user account exists", target_fixture="user_id")
 def user_account_exists(
-    user_management_service: AsyncMock,
+    user_repository: AsyncMock,
 ) -> str:
-    user_management_service.patch_user.return_value = _make_user_response()
-    user_management_service.delete_user.return_value = None
+    user = UserFactory.build(id="u-1")
+    user_repository.find_by_id.return_value = user
+    user_repository.save.return_value = None
+    user_repository.delete.return_value = True
     return "u-1"
 
 
@@ -146,10 +118,11 @@ def user_account_exists(
 def admin_creates_user(
     client: TestClient,
     email: str,
-    user_management_service: AsyncMock,
+    user_repository: AsyncMock,
 ) -> Any:
-    if not user_management_service.create_user.side_effect:
-        user_management_service.create_user.return_value = _make_user_response(email=email)
+    if isinstance(user_repository.find_by_email.return_value, AsyncMock):
+        user_repository.find_by_email.return_value = None
+    user_repository.save.return_value = None
     return client.post(
         USERS_URL,
         json={"email": email, "password": "securepassword"},
@@ -163,10 +136,10 @@ def admin_creates_user(
 def admin_lists_users(
     client: TestClient,
     per_page: int,
-    user_management_service: AsyncMock,
+    user_repository: AsyncMock,
 ) -> Any:
-    users = [_make_user_response(f"u-{i}", f"u{i}@example.com") for i in range(per_page)]
-    user_management_service.list_users.return_value = PaginatedResult(
+    users = [UserFactory.build(id=f"u-{i}", email=f"u{i}@example.com") for i in range(per_page)]
+    user_repository.find_paginated.return_value = PaginatedResult(
         count=15,
         results=users,
     )
@@ -182,12 +155,8 @@ def admin_patches_flag(
     flag: str,
     value: str,
     user_id: str,
-    user_management_service: AsyncMock,
 ) -> Any:
     bool_value = value.lower() == "true"
-    user_management_service.patch_user.return_value = _make_user_response(
-        **{flag: bool_value},
-    )
     return client.patch(
         f"{USERS_URL}/{user_id}",
         json={flag: bool_value},
@@ -200,9 +169,9 @@ def admin_patches_flag(
 )
 def admin_patches_nonexistent(
     client: TestClient,
-    user_management_service: AsyncMock,
+    user_repository: AsyncMock,
 ) -> Any:
-    user_management_service.patch_user.side_effect = NotFoundError("User", "nonexistent")
+    user_repository.find_by_id.return_value = None
     return client.patch(
         f"{USERS_URL}/nonexistent",
         json={"is_active": False},
@@ -220,9 +189,9 @@ def admin_deletes_user(client: TestClient, user_id: str) -> Any:
 )
 def admin_deletes_nonexistent(
     client: TestClient,
-    user_management_service: AsyncMock,
+    user_repository: AsyncMock,
 ) -> Any:
-    user_management_service.delete_user.side_effect = NotFoundError("User", "nonexistent")
+    user_repository.delete.return_value = False
     return client.delete(f"{USERS_URL}/nonexistent")
 
 

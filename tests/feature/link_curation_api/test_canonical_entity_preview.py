@@ -1,7 +1,8 @@
 """Step definitions for canonical_entity_preview.feature.
 
 Tests the proposed and alternative canonical entity endpoints through
-the FastAPI test client with mocked CanonicalEntityService.
+the FastAPI test client. Repository mocks let real CanonicalEntityService
+logic run end-to-end.
 """
 
 from pathlib import Path
@@ -11,13 +12,12 @@ from unittest.mock import AsyncMock
 from pytest_bdd import given, parsers, scenario, then, when
 from starlette.testclient import TestClient
 
-from ers.commons.domain.data_transfer_objects import PaginatedResult
-from ers.commons.services.exceptions import NotFoundError
-from ers.curation.domain.data_transfer_objects import (
-    CanonicalEntityPreview,
-    EntityMentionPreview,
+from tests.unit.factories import (
+    ClusterReferenceFactory,
+    DecisionFactory,
+    EntityMentionFactory,
+    EntityMentionIdentifierFactory,
 )
-from tests.unit.factories import EntityMentionIdentifierFactory
 
 FEATURE = str(Path(__file__).resolve().parent / "canonical_entity_preview.feature")
 
@@ -64,19 +64,16 @@ def test_alternatives_not_found():
 # ---------------------------------------------------------------------------
 
 
-def _make_preview(cluster_id: str, n_entities: int = 3) -> CanonicalEntityPreview:
-    return CanonicalEntityPreview(
-        cluster_id=cluster_id,
-        confidence_score=0.9,
-        similarity_score=0.85,
-        top_entities=[
-            EntityMentionPreview(
-                identified_by=EntityMentionIdentifierFactory.build(),
-                parsed_representation='{"name": "Entity"}',
-            )
-            for _ in range(n_entities)
-        ],
-    )
+def _setup_cluster_mentions(
+    decision_repository: AsyncMock,
+    entity_mention_repository: AsyncMock,
+    n_mentions: int = 3,
+) -> None:
+    """Wire repository mocks so _build_canonical_entity_preview works."""
+    identifiers = EntityMentionIdentifierFactory.batch(n_mentions)
+    mentions = [EntityMentionFactory.build(identifiedBy=eid) for eid in identifiers]
+    decision_repository.find_mention_ids_by_cluster.return_value = identifiers
+    entity_mention_repository.find_by_identifiers.return_value = mentions
 
 
 # ---------------------------------------------------------------------------
@@ -90,8 +87,15 @@ def _make_preview(cluster_id: str, n_entities: int = 3) -> CanonicalEntityPrevie
 def decision_with_placement(
     ctx: dict[str, Any],
     cluster_id: str,
-    canonical_entity_service: AsyncMock,
+    decision_repository: AsyncMock,
 ) -> None:
+    placement = ClusterReferenceFactory.build(
+        cluster_id=cluster_id,
+        confidence_score=0.9,
+        similarity_score=0.85,
+    )
+    decision = DecisionFactory.build(id="decision-1", current_placement=placement)
+    decision_repository.find_by_id.return_value = decision
     ctx["decision_id"] = "decision-1"
     ctx["cluster_id"] = cluster_id
 
@@ -101,25 +105,32 @@ def cluster_has_mentions(
     ctx: dict[str, Any],
     cluster_id: str,
     count: int,
-    canonical_entity_service: AsyncMock,
+    decision_repository: AsyncMock,
+    entity_mention_repository: AsyncMock,
 ) -> None:
-    preview = _make_preview(cluster_id, min(count, 5))
-    canonical_entity_service.get_proposed_canonical_entity.return_value = preview
+    _setup_cluster_mentions(decision_repository, entity_mention_repository, count)
 
 
 @given(parsers.parse("a decision exists with {count:d} candidate clusters"))
 def decision_with_n_candidates(
     ctx: dict[str, Any],
     count: int,
-    canonical_entity_service: AsyncMock,
+    decision_repository: AsyncMock,
+    entity_mention_repository: AsyncMock,
 ) -> None:
+    current = ClusterReferenceFactory.build(cluster_id="cluster-0")
+    candidates = [current] + [
+        ClusterReferenceFactory.build(cluster_id=f"cluster-{i}") for i in range(1, count)
+    ]
+    decision = DecisionFactory.build(
+        id="decision-1",
+        current_placement=current,
+        candidates=candidates,
+    )
+    decision_repository.find_by_id.return_value = decision
+    _setup_cluster_mentions(decision_repository, entity_mention_repository)
     ctx["decision_id"] = "decision-1"
     ctx["candidate_count"] = count
-    alternatives = [_make_preview(f"cluster-{i}") for i in range(1, count)]
-    canonical_entity_service.get_alternative_canonical_entities.return_value = PaginatedResult(
-        count=count - 1,
-        results=alternatives,
-    )
 
 
 @given("the current placement is in the first candidate")
@@ -133,8 +144,20 @@ def current_is_first() -> None:
 def decision_with_candidates_and_current(
     ctx: dict[str, Any],
     count: int,
-    canonical_entity_service: AsyncMock,
+    decision_repository: AsyncMock,
+    entity_mention_repository: AsyncMock,
 ) -> None:
+    current = ClusterReferenceFactory.build(cluster_id="cluster-0")
+    candidates = [current] + [
+        ClusterReferenceFactory.build(cluster_id=f"cluster-{i}") for i in range(1, count)
+    ]
+    decision = DecisionFactory.build(
+        id="decision-1",
+        current_placement=current,
+        candidates=candidates,
+    )
+    decision_repository.find_by_id.return_value = decision
+    _setup_cluster_mentions(decision_repository, entity_mention_repository)
     ctx["decision_id"] = "decision-1"
     ctx["candidate_count"] = count
 
@@ -144,13 +167,18 @@ def decision_with_candidates_and_current(
 )
 def decision_single_candidate(
     ctx: dict[str, Any],
-    canonical_entity_service: AsyncMock,
+    decision_repository: AsyncMock,
+    entity_mention_repository: AsyncMock,
 ) -> None:
-    ctx["decision_id"] = "decision-1"
-    canonical_entity_service.get_alternative_canonical_entities.return_value = PaginatedResult(
-        count=0,
-        results=[],
+    current = ClusterReferenceFactory.build(cluster_id="cluster-0")
+    decision = DecisionFactory.build(
+        id="decision-1",
+        current_placement=current,
+        candidates=[current],
     )
+    decision_repository.find_by_id.return_value = decision
+    _setup_cluster_mentions(decision_repository, entity_mention_repository)
+    ctx["decision_id"] = "decision-1"
 
 
 # ---------------------------------------------------------------------------
@@ -174,12 +202,9 @@ def request_proposed(
 )
 def request_proposed_not_found(
     client: TestClient,
-    canonical_entity_service: AsyncMock,
+    decision_repository: AsyncMock,
 ) -> Any:
-    canonical_entity_service.get_proposed_canonical_entity.side_effect = NotFoundError(
-        "Decision",
-        "nonexistent",
-    )
+    decision_repository.find_by_id.return_value = None
     return client.get(
         f"{DECISIONS_URL}/nonexistent/proposed-canonical-entity",
     )
@@ -210,15 +235,7 @@ def request_alternatives_paginated(
     ctx: dict[str, Any],
     page: int,
     per_page: int,
-    canonical_entity_service: AsyncMock,
 ) -> Any:
-    alternatives = [_make_preview(f"cluster-{i}") for i in range(per_page)]
-    total = ctx.get("candidate_count", 6) - 1
-    canonical_entity_service.get_alternative_canonical_entities.return_value = PaginatedResult(
-        count=total,
-        next=page + 1 if page * per_page < total else None,
-        results=alternatives,
-    )
     return client.get(
         f"{DECISIONS_URL}/{ctx['decision_id']}/alternative-canonical-entities",
         params={"page": page, "per_page": per_page},
@@ -231,12 +248,9 @@ def request_alternatives_paginated(
 )
 def request_alternatives_not_found(
     client: TestClient,
-    canonical_entity_service: AsyncMock,
+    decision_repository: AsyncMock,
 ) -> Any:
-    canonical_entity_service.get_alternative_canonical_entities.side_effect = NotFoundError(
-        "Decision",
-        "nonexistent",
-    )
+    decision_repository.find_by_id.return_value = None
     return client.get(
         f"{DECISIONS_URL}/nonexistent/alternative-canonical-entities",
     )

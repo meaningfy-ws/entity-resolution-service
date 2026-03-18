@@ -1,7 +1,8 @@
 """Step definitions for bulk_curation.feature.
 
 Tests the POST bulk-accept and bulk-reject endpoints through the FastAPI test
-client with mocked DecisionCurationService.
+client. Repository mocks let real DecisionCurationService logic run end-to-end,
+including concurrent execution and per-item error handling.
 """
 
 from pathlib import Path
@@ -11,11 +12,7 @@ from unittest.mock import AsyncMock
 from pytest_bdd import given, parsers, scenario, then, when
 from starlette.testclient import TestClient
 
-from ers.curation.domain.data_transfer_objects import (
-    BulkActionResponse,
-    BulkItemResult,
-    BulkItemStatus,
-)
+from tests.unit.factories import DecisionFactory
 
 FEATURE = str(Path(__file__).resolve().parent / "bulk_curation.feature")
 
@@ -116,18 +113,34 @@ def n_already_curated_no_version(ctx: dict[str, Any], count: int) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _build_bulk_response(ctx: dict[str, Any]) -> BulkActionResponse:
-    results: list[BulkItemResult] = []
+def _setup_bulk_repo_mocks(
+    ctx: dict[str, Any],
+    decision_repository: AsyncMock,
+    user_action_repository: AsyncMock,
+) -> None:
+    """Wire repository side_effects so real service logic handles each ID."""
+    decisions: dict[str, Any] = {}
+    curated_identifiers: set[tuple[str, str, str]] = set()
+
     for did in ctx.get("decision_ids", []):
         if did.startswith("missing"):
-            results.append(BulkItemResult(decision_id=did, status=BulkItemStatus.NOT_FOUND))
-        elif did.startswith("curated"):
-            results.append(
-                BulkItemResult(decision_id=did, status=BulkItemStatus.ALREADY_CURATED),
-            )
-        else:
-            results.append(BulkItemResult(decision_id=did, status=BulkItemStatus.SUCCESS))
-    return BulkActionResponse(results=results)
+            continue
+        decision = DecisionFactory.build(id=did)
+        decisions[did] = decision
+        if did.startswith("curated"):
+            emi = decision.about_entity_mention
+            curated_identifiers.add((emi.source_id, emi.request_id, emi.entity_type))
+
+    decision_repository.find_by_id.side_effect = lambda did: decisions.get(did)
+    user_action_repository.has_current_action.side_effect = lambda about_entity_mention, since: (
+        (
+            about_entity_mention.source_id,
+            about_entity_mention.request_id,
+            about_entity_mention.entity_type,
+        )
+        in curated_identifiers
+    )
+    user_action_repository.save.return_value = None
 
 
 # ---------------------------------------------------------------------------
@@ -143,9 +156,10 @@ def bulk_accept_n(
     client: TestClient,
     ctx: dict[str, Any],
     count: int,
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
+    user_action_repository: AsyncMock,
 ) -> Any:
-    decision_curation_service.bulk_accept_decisions.return_value = _build_bulk_response(ctx)
+    _setup_bulk_repo_mocks(ctx, decision_repository, user_action_repository)
     return client.post(
         f"{DECISIONS_URL}/bulk-accept",
         json={"decision_ids": ctx["decision_ids"]},
@@ -160,9 +174,10 @@ def bulk_accept_ids(
     client: TestClient,
     ctx: dict[str, Any],
     count: int,
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
+    user_action_repository: AsyncMock,
 ) -> Any:
-    decision_curation_service.bulk_accept_decisions.return_value = _build_bulk_response(ctx)
+    _setup_bulk_repo_mocks(ctx, decision_repository, user_action_repository)
     return client.post(
         f"{DECISIONS_URL}/bulk-accept",
         json={"decision_ids": ctx["decision_ids"]},
@@ -173,9 +188,10 @@ def bulk_accept_ids(
 def bulk_accept_both(
     client: TestClient,
     ctx: dict[str, Any],
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
+    user_action_repository: AsyncMock,
 ) -> Any:
-    decision_curation_service.bulk_accept_decisions.return_value = _build_bulk_response(ctx)
+    _setup_bulk_repo_mocks(ctx, decision_repository, user_action_repository)
     return client.post(
         f"{DECISIONS_URL}/bulk-accept",
         json={"decision_ids": ctx["decision_ids"]},
@@ -190,9 +206,10 @@ def bulk_reject_n(
     client: TestClient,
     ctx: dict[str, Any],
     count: int,
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
+    user_action_repository: AsyncMock,
 ) -> Any:
-    decision_curation_service.bulk_reject_decisions.return_value = _build_bulk_response(ctx)
+    _setup_bulk_repo_mocks(ctx, decision_repository, user_action_repository)
     return client.post(
         f"{DECISIONS_URL}/bulk-reject",
         json={"decision_ids": ctx["decision_ids"]},
@@ -207,9 +224,10 @@ def bulk_reject_ids(
     client: TestClient,
     ctx: dict[str, Any],
     count: int,
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
+    user_action_repository: AsyncMock,
 ) -> Any:
-    decision_curation_service.bulk_reject_decisions.return_value = _build_bulk_response(ctx)
+    _setup_bulk_repo_mocks(ctx, decision_repository, user_action_repository)
     return client.post(
         f"{DECISIONS_URL}/bulk-reject",
         json={"decision_ids": ctx["decision_ids"]},

@@ -105,14 +105,14 @@ def non_admin_client(app: FastAPI) -> TestClient:
 @given("an administrator is authenticated", target_fixture="test_client")
 def admin_client(
     app: FastAPI,
-    user_management_service: AsyncMock,
-    user_action_service: AsyncMock,
+    user_repository: AsyncMock,
+    user_action_repository: AsyncMock,
 ) -> TestClient:
-    user_management_service.list_users.return_value = PaginatedResult(
+    user_repository.find_paginated.return_value = PaginatedResult(
         count=0,
         results=[],
     )
-    user_action_service.list_user_actions.return_value = PaginatedResult(
+    user_action_repository.find_paginated.return_value = PaginatedResult(
         count=0,
         results=[],
     )
@@ -122,32 +122,29 @@ def admin_client(
 @given("a verified user is authenticated", target_fixture="test_client")
 def verified_client(
     app: FastAPI,
-    decision_curation_service: AsyncMock,
-    statistics_service: AsyncMock,
+    decision_repository: AsyncMock,
+    statistics_repository: AsyncMock,
 ) -> TestClient:
     from ers.curation.domain.data_transfer_objects import (
         CurationStatistics,
         RegistryStatistics,
-        Statistics,
     )
 
-    decision_curation_service.list_decisions.return_value = PaginatedResult(
+    decision_repository.find_with_filters.return_value = PaginatedResult(
         count=0,
         results=[],
     )
-    statistics_service.get_statistics.return_value = Statistics(
-        registry=RegistryStatistics(
-            total_entity_mentions=0,
-            total_canonical_entities=0,
-            average_cluster_size=0.0,
-            resolution_requests=0,
-        ),
-        curation=CurationStatistics(
-            total_decisions=0,
-            selected_top=0,
-            selected_alternative=0,
-            rejected_all=0,
-        ),
+    statistics_repository.get_curation_statistics.return_value = CurationStatistics(
+        total_decisions=0,
+        selected_top=0,
+        selected_alternative=0,
+        rejected_all=0,
+    )
+    statistics_repository.get_registry_statistics.return_value = RegistryStatistics(
+        total_entity_mentions=0,
+        total_canonical_entities=0,
+        average_cluster_size=0.0,
+        resolution_requests=0,
     )
     return make_client_with_user(app, VERIFIED_USER)
 

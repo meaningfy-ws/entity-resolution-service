@@ -1,7 +1,8 @@
 """Step definitions for decision_curation.feature.
 
-Tests the POST accept/reject/assign endpoints through the FastAPI test client
-with mocked DecisionCurationService.
+Tests the POST accept/reject/assign endpoints through the FastAPI test client.
+Repository mocks let real DecisionCurationService + UserActionService logic
+run end-to-end.
 """
 
 from pathlib import Path
@@ -11,8 +12,7 @@ from unittest.mock import AsyncMock
 from pytest_bdd import given, parsers, scenario, then, when
 from starlette.testclient import TestClient
 
-from ers.commons.services.exceptions import NotFoundError
-from ers.curation.domain.exceptions import AlreadyCuratedError, InvalidClusterError
+from tests.unit.factories import ClusterReferenceFactory, DecisionFactory
 
 FEATURE = str(Path(__file__).resolve().parent / "decision_curation.feature")
 
@@ -72,11 +72,13 @@ def test_assign_not_found():
 @given("a decision exists that has not been curated on its current version")
 def decision_not_curated(
     ctx: dict[str, Any],
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
+    user_action_repository: AsyncMock,
 ) -> None:
-    decision_curation_service.accept_decision.return_value = None
-    decision_curation_service.reject_decision.return_value = None
-    decision_curation_service.assign_decision.return_value = None
+    decision = DecisionFactory.build(id="decision-1")
+    decision_repository.find_by_id.return_value = decision
+    user_action_repository.has_current_action.return_value = False
+    user_action_repository.save.return_value = None
     ctx["decision_id"] = "decision-1"
 
 
@@ -84,26 +86,35 @@ def decision_not_curated(
 def decision_with_alternative(
     ctx: dict[str, Any],
     cluster_id: str,
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
+    user_action_repository: AsyncMock,
 ) -> None:
-    decision_curation_service.assign_decision.return_value = None
+    alt_candidate = ClusterReferenceFactory.build(cluster_id=cluster_id)
+    decision = DecisionFactory.build(
+        id="decision-1",
+        candidates=[ClusterReferenceFactory.build(), alt_candidate],
+    )
+    decision_repository.find_by_id.return_value = decision
+    user_action_repository.has_current_action.return_value = False
+    user_action_repository.save.return_value = None
     ctx["decision_id"] = "decision-1"
     ctx["alt_cluster"] = cluster_id
 
 
 @given("the decision has not been curated on its current version")
-def decision_uncurated(decision_curation_service: AsyncMock) -> None:
-    # Combined with above — service returns success
+def decision_uncurated() -> None:
     pass
 
 
 @given("a decision exists that has already been curated on its current version")
 def decision_already_curated(
     ctx: dict[str, Any],
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
+    user_action_repository: AsyncMock,
 ) -> None:
-    decision_curation_service.accept_decision.side_effect = AlreadyCuratedError("decision-1")
-    decision_curation_service.reject_decision.side_effect = AlreadyCuratedError("decision-1")
+    decision = DecisionFactory.build(id="decision-1")
+    decision_repository.find_by_id.return_value = decision
+    user_action_repository.has_current_action.return_value = True
     ctx["decision_id"] = "decision-1"
 
 
@@ -126,12 +137,9 @@ def accept_decision(
 )
 def accept_nonexistent(
     client: TestClient,
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
 ) -> Any:
-    decision_curation_service.accept_decision.side_effect = NotFoundError(
-        "Decision",
-        "nonexistent",
-    )
+    decision_repository.find_by_id.return_value = None
     return client.post(f"{DECISIONS_URL}/nonexistent/accept")
 
 
@@ -157,12 +165,9 @@ def reject_decision(
 )
 def reject_nonexistent(
     client: TestClient,
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
 ) -> Any:
-    decision_curation_service.reject_decision.side_effect = NotFoundError(
-        "Decision",
-        "nonexistent",
-    )
+    decision_repository.find_by_id.return_value = None
     return client.post(f"{DECISIONS_URL}/nonexistent/reject")
 
 
@@ -174,13 +179,7 @@ def assign_decision(
     client: TestClient,
     ctx: dict[str, Any],
     cluster_id: str,
-    decision_curation_service: AsyncMock,
 ) -> Any:
-    if cluster_id == "nonexistent-cluster":
-        decision_curation_service.assign_decision.side_effect = InvalidClusterError(
-            cluster_id,
-            ctx.get("decision_id", "decision-1"),
-        )
     return client.post(
         f"{DECISIONS_URL}/{ctx['decision_id']}/assign",
         json={"cluster_id": cluster_id},
@@ -193,12 +192,9 @@ def assign_decision(
 )
 def assign_nonexistent(
     client: TestClient,
-    decision_curation_service: AsyncMock,
+    decision_repository: AsyncMock,
 ) -> Any:
-    decision_curation_service.assign_decision.side_effect = NotFoundError(
-        "Decision",
-        "nonexistent",
-    )
+    decision_repository.find_by_id.return_value = None
     return client.post(
         f"{DECISIONS_URL}/nonexistent/assign",
         json={"cluster_id": "any-cluster"},
@@ -220,14 +216,15 @@ def confirms_no_content(response: Any) -> None:
 def action_recorded(
     response: Any,
     action_type: str,
-    decision_curation_service: AsyncMock,
+    user_action_repository: AsyncMock,
 ) -> None:
-    method_map = {
-        "accept top": "accept_decision",
-        "reject all": "reject_decision",
+    user_action_repository.save.assert_called_once()
+    saved_action = user_action_repository.save.call_args[0][0]
+    type_map = {
+        "accept top": "ACCEPT_TOP",
+        "reject all": "REJECT_ALL",
     }
-    method_name = method_map[action_type]
-    getattr(decision_curation_service, method_name).assert_called_once()
+    assert saved_action.action_type == type_map[action_type]
 
 
 @then(
@@ -237,11 +234,11 @@ def action_recorded_for_cluster(
     response: Any,
     action_type: str,
     cluster_id: str,
-    decision_curation_service: AsyncMock,
+    user_action_repository: AsyncMock,
 ) -> None:
-    decision_curation_service.assign_decision.assert_called_once()
-    call_kwargs = decision_curation_service.assign_decision.call_args
-    assert call_kwargs[1]["cluster_id"] == cluster_id
+    user_action_repository.save.assert_called_once()
+    saved_action = user_action_repository.save.call_args[0][0]
+    assert saved_action.selected_cluster.cluster_id == cluster_id
 
 
 @then("the system responds with a not found error")

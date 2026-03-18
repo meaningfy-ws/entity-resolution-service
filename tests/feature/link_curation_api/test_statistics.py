@@ -1,6 +1,7 @@
 """Step definitions for statistics.feature.
 
-Tests the GET /api/v1/curation/stats endpoint with mocked StatisticsService.
+Tests the GET /api/v1/curation/stats endpoint. Repository mocks let real
+StatisticsService logic run end-to-end.
 """
 
 from pathlib import Path
@@ -13,7 +14,6 @@ from starlette.testclient import TestClient
 from ers.curation.domain.data_transfer_objects import (
     CurationStatistics,
     RegistryStatistics,
-    Statistics,
 )
 
 FEATURE = str(Path(__file__).resolve().parent / "statistics.feature")
@@ -26,34 +26,32 @@ ENTITY_TYPE_MAP = {
     "Procedure": "PROCEDURE",
 }
 
-POPULATED_STATS = Statistics(
-    registry=RegistryStatistics(
-        total_entity_mentions=100,
-        total_canonical_entities=50,
-        average_cluster_size=2.0,
-        resolution_requests=10,
-    ),
-    curation=CurationStatistics(
-        total_decisions=80,
-        selected_top=40,
-        selected_alternative=25,
-        rejected_all=15,
-    ),
+POPULATED_CURATION = CurationStatistics(
+    total_decisions=80,
+    selected_top=40,
+    selected_alternative=25,
+    rejected_all=15,
 )
 
-EMPTY_STATS = Statistics(
-    registry=RegistryStatistics(
-        total_entity_mentions=0,
-        total_canonical_entities=0,
-        average_cluster_size=0.0,
-        resolution_requests=0,
-    ),
-    curation=CurationStatistics(
-        total_decisions=0,
-        selected_top=0,
-        selected_alternative=0,
-        rejected_all=0,
-    ),
+POPULATED_REGISTRY = RegistryStatistics(
+    total_entity_mentions=100,
+    total_canonical_entities=50,
+    average_cluster_size=2.0,
+    resolution_requests=10,
+)
+
+EMPTY_CURATION = CurationStatistics(
+    total_decisions=0,
+    selected_top=0,
+    selected_alternative=0,
+    rejected_all=0,
+)
+
+EMPTY_REGISTRY = RegistryStatistics(
+    total_entity_mentions=0,
+    total_canonical_entities=0,
+    average_cluster_size=0.0,
+    resolution_requests=0,
 )
 
 
@@ -93,8 +91,9 @@ def test_read_only():
 
 
 @given("decisions and user actions exist in the system")
-def populated_system(statistics_service: AsyncMock) -> None:
-    statistics_service.get_statistics.return_value = POPULATED_STATS
+def populated_system(statistics_repository: AsyncMock) -> None:
+    statistics_repository.get_curation_statistics.return_value = POPULATED_CURATION
+    statistics_repository.get_registry_statistics.return_value = POPULATED_REGISTRY
 
 
 @given(parsers.parse('decisions exist for entity types "{type_a}" and "{type_b}"'))
@@ -102,9 +101,10 @@ def decisions_for_types(
     ctx: dict[str, Any],
     type_a: str,
     type_b: str,
-    statistics_service: AsyncMock,
+    statistics_repository: AsyncMock,
 ) -> None:
-    statistics_service.get_statistics.return_value = POPULATED_STATS
+    statistics_repository.get_curation_statistics.return_value = POPULATED_CURATION
+    statistics_repository.get_registry_statistics.return_value = POPULATED_REGISTRY
 
 
 @given("user actions exist for both entity types")
@@ -113,13 +113,15 @@ def actions_for_types() -> None:
 
 
 @given("user actions exist across different dates")
-def actions_across_dates(statistics_service: AsyncMock) -> None:
-    statistics_service.get_statistics.return_value = POPULATED_STATS
+def actions_across_dates(statistics_repository: AsyncMock) -> None:
+    statistics_repository.get_curation_statistics.return_value = POPULATED_CURATION
+    statistics_repository.get_registry_statistics.return_value = POPULATED_REGISTRY
 
 
 @given("no decisions or user actions exist")
-def empty_system(statistics_service: AsyncMock) -> None:
-    statistics_service.get_statistics.return_value = EMPTY_STATS
+def empty_system(statistics_repository: AsyncMock) -> None:
+    statistics_repository.get_curation_statistics.return_value = EMPTY_CURATION
+    statistics_repository.get_registry_statistics.return_value = EMPTY_REGISTRY
 
 
 # ---------------------------------------------------------------------------
@@ -128,7 +130,12 @@ def empty_system(statistics_service: AsyncMock) -> None:
 
 
 @when("the curator requests statistics", target_fixture="response")
-def request_statistics(client: TestClient) -> Any:
+def request_statistics(client: TestClient, statistics_repository: AsyncMock) -> Any:
+    if not statistics_repository.get_curation_statistics.return_value.__class__.__name__.endswith(
+        "Statistics"
+    ):
+        statistics_repository.get_curation_statistics.return_value = POPULATED_CURATION
+        statistics_repository.get_registry_statistics.return_value = POPULATED_REGISTRY
     return client.get(STATS_URL)
 
 
@@ -197,22 +204,22 @@ def curation_has_counts(response: Any) -> None:
 def stats_filtered_by_type(
     response: Any,
     entity_type: str,
-    statistics_service: AsyncMock,
+    statistics_repository: AsyncMock,
 ) -> None:
     assert response.status_code == 200
-    call_args = statistics_service.get_statistics.call_args
-    filters = call_args.kwargs["filters"]
+    call_args = statistics_repository.get_curation_statistics.call_args
+    filters = call_args[0][0]
     assert filters.entity_type is not None
 
 
 @then("the curation statistics reflect only actions within that time range")
 def stats_filtered_by_time(
     response: Any,
-    statistics_service: AsyncMock,
+    statistics_repository: AsyncMock,
 ) -> None:
     assert response.status_code == 200
-    call_args = statistics_service.get_statistics.call_args
-    filters = call_args.kwargs["filters"]
+    call_args = statistics_repository.get_curation_statistics.call_args
+    filters = call_args[0][0]
     assert filters.timeframe_start is not None
     assert filters.timeframe_end is not None
 
@@ -233,6 +240,7 @@ def avg_cluster_zero(response: Any) -> None:
 
 @then("no system state is modified")
 def read_only(
-    statistics_service: AsyncMock,
+    statistics_repository: AsyncMock,
 ) -> None:
-    statistics_service.get_statistics.assert_called_once()
+    statistics_repository.get_curation_statistics.assert_called_once()
+    statistics_repository.get_registry_statistics.assert_called_once()
