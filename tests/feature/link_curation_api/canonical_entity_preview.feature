@@ -42,3 +42,12 @@ Feature: Canonical entity preview
   Scenario: Alternative canonical entities for a non-existent decision
     When the curator requests alternative canonical entities for a non-existent decision
     Then the system responds with a not found error
+
+  # --- Incomplete data ---
+
+  Scenario: Canonical entity preview with mentions lacking parsed representations
+    Given a decision exists with a current placement in cluster "cluster-B"
+    And cluster "cluster-B" contains entity mentions with no parsed representations
+    When the curator requests the proposed canonical entity
+    Then a preview is returned for cluster "cluster-B"
+    And the preview includes only the entity mention identifiers where parsed representations are absent
