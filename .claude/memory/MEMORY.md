@@ -62,6 +62,10 @@
 - 2026-03-17: `.env` lives at `infra/.env`; all `docker compose` make targets use `--env-file infra/.env` explicitly.
 - 2026-03-18: Tests split into high-level folders by type: `tests/unit/`, `tests/feature/`, `tests/e2e/`. Markers (`unit`, `feature`, `e2e`, `integration`) applied via `pytest_collection_modifyitems` hook in `tests/conftest.py`. Makefile targets use `-m <marker>`. `pytestmark` in `conftest.py` is silently ignored by pytest — do not use it there.
 
+## Feature File Assessment
+
+- [epics/link-curation/2026-03-19-feature-file-assessment.md](epics/link-curation/2026-03-19-feature-file-assessment.md) — Critical review of BDD features vs architecture (UC-W2, UC-B2.1/2.2, UC-W4, UC-W5, Spines C/D)
+
 ## Codebase Patterns
 
 - Agent files in `.claude/agents/` with YAML frontmatter + markdown system prompt.

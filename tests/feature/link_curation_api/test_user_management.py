@@ -49,13 +49,28 @@ def test_update_not_found():
     pass
 
 
-@scenario(FEATURE, "Delete a user")
-def test_delete_user():
+@scenario(FEATURE, "Deactivate a user")
+def test_deactivate_user():
     pass
 
 
-@scenario(FEATURE, "Delete a non-existent user")
-def test_delete_not_found():
+@scenario(FEATURE, "Deactivate a non-existent user")
+def test_deactivate_not_found():
+    pass
+
+
+@scenario(FEATURE, "Reactivate a previously deactivated user")
+def test_reactivate_user():
+    pass
+
+
+@scenario(FEATURE, "Deactivated user's past actions remain visible in the action trail")
+def test_deactivated_user_traceability():
+    pass
+
+
+@scenario(FEATURE, "Cannot deactivate the last administrator")
+def test_cannot_deactivate_last_admin():
     pass
 
 
@@ -102,8 +117,47 @@ def user_account_exists(
     user = UserFactory.build(id="u-1")
     user_repository.find_by_id.return_value = user
     user_repository.save.return_value = None
-    user_repository.delete.return_value = True
     return "u-1"
+
+
+@given("a user account exists and is active", target_fixture="user_id")
+def user_account_active(
+    user_repository: AsyncMock,
+) -> str:
+    user = UserFactory.build(id="u-1", is_active=True)
+    user_repository.find_by_id.return_value = user
+    user_repository.save.return_value = None
+    return "u-1"
+
+
+@given("a user account exists and is deactivated", target_fixture="user_id")
+def user_account_deactivated(
+    user_repository: AsyncMock,
+) -> str:
+    user = UserFactory.build(id="u-1", is_active=False)
+    user_repository.find_by_id.return_value = user
+    user_repository.save.return_value = None
+    return "u-1"
+
+
+@given("the user has submitted curation actions")
+def user_has_curation_actions(
+    ctx: dict[str, Any],
+    user_action_repository: AsyncMock,
+) -> None:
+    # TODO: Set up user_action_repository to return actions attributable to
+    #       the user being deactivated, so traceability can be verified.
+    ctx["user_has_actions"] = True
+
+
+@given("only one active administrator account exists")
+def only_one_admin(
+    ctx: dict[str, Any],
+    user_repository: AsyncMock,
+) -> None:
+    # TODO: Set up user_repository so only one active admin exists.
+    #       The service should query active admin count before deactivation.
+    ctx["last_admin_id"] = "admin-1"
 
 
 # ---------------------------------------------------------------------------
@@ -178,21 +232,52 @@ def admin_patches_nonexistent(
     )
 
 
-@when("the administrator deletes the user", target_fixture="response")
-def admin_deletes_user(client: TestClient, user_id: str) -> Any:
-    return client.delete(f"{USERS_URL}/{user_id}")
+@when("the administrator deactivates the user", target_fixture="response")
+def admin_deactivates_user(client: TestClient, user_id: str) -> Any:
+    return client.patch(
+        f"{USERS_URL}/{user_id}",
+        json={"active": False},
+    )
 
 
 @when(
-    "the administrator attempts to delete a user that does not exist",
+    "the administrator attempts to deactivate a user that does not exist",
     target_fixture="response",
 )
-def admin_deletes_nonexistent(
+def admin_deactivates_nonexistent(
     client: TestClient,
     user_repository: AsyncMock,
 ) -> Any:
-    user_repository.delete.return_value = False
-    return client.delete(f"{USERS_URL}/nonexistent")
+    user_repository.find_by_id.return_value = None
+    return client.patch(
+        f"{USERS_URL}/nonexistent",
+        json={"active": False},
+    )
+
+
+@when("the administrator reactivates the user", target_fixture="response")
+def admin_reactivates_user(client: TestClient, user_id: str) -> Any:
+    return client.patch(
+        f"{USERS_URL}/{user_id}",
+        json={"active": True},
+    )
+
+
+@when(
+    "the administrator attempts to deactivate that administrator account",
+    target_fixture="response",
+)
+def admin_deactivates_self(
+    client: TestClient,
+    ctx: dict[str, Any],
+) -> Any:
+    # TODO: Implement last-admin guard logic in the service layer.
+    #       The service should reject deactivation when only one active admin remains.
+    admin_id = ctx.get("last_admin_id", "admin-1")
+    return client.patch(
+        f"{USERS_URL}/{admin_id}",
+        json={"active": False},
+    )
 
 
 @when(
@@ -247,9 +332,70 @@ def not_found(response: Any) -> None:
     assert response.status_code == 404
 
 
-@then("the user is removed from the system")
-def user_removed(response: Any) -> None:
-    assert response.status_code == 204
+@then("the user record is preserved with active set to false")
+def user_deactivated(response: Any) -> None:
+    assert response.status_code == 200
+
+
+@then("the user can no longer access the system")
+def user_cannot_access(response: Any) -> None:
+    # TODO: Verify that the returned user record has active=false.
+    #       Optionally verify that a subsequent request as this user is denied.
+    data = response.json()
+    assert data.get("is_active") is False
+
+
+@then("the user record reflects active set to true")
+def user_reactivated(response: Any) -> None:
+    assert response.status_code == 200
+
+
+@then("the user can access the system again")
+def user_can_access(response: Any) -> None:
+    # TODO: Verify that the returned user record has active=true.
+    data = response.json()
+    assert data.get("is_active") is True
+
+
+@then("all past curation actions by that user remain visible")
+def past_actions_visible(
+    response: Any,
+    ctx: dict[str, Any],
+) -> None:
+    # TODO: Query the user action trail and verify actions by the deactivated
+    #       user are still returned.  This is a cross-service concern that may
+    #       need an additional request to the user-actions endpoint.
+    pass
+
+
+@then("each action is still attributable to the deactivated user")
+def actions_attributable(
+    response: Any,
+    ctx: dict[str, Any],
+) -> None:
+    # TODO: Verify each action summary still carries the deactivated user's
+    #       identifier (email or id) as the actor field.
+    pass
+
+
+@then("the system rejects the deactivation")
+def deactivation_rejected(response: Any) -> None:
+    # TODO: Assert the appropriate error status code (e.g. 409 Conflict or 400)
+    #       when the last admin cannot be deactivated.
+    #       Requires last-admin guard logic in the service layer.
+    pass
+
+
+@then("the administrator account remains active")
+def admin_remains_active(response: Any) -> None:
+    # TODO: Verify the admin account was not modified (is_active still True).
+    #       Depends on the last-admin guard returning an error response.
+    pass
+
+
+# TODO: The DELETE /users/{user_id} endpoint should either be removed or
+#       repurposed to return an error (e.g. 405 Method Not Allowed or 400
+#       with a message indicating that users cannot be deleted, only deactivated).
 
 
 @then("the response contains the user's email and role flags")

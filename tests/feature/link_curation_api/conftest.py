@@ -16,7 +16,11 @@ from fastapi import FastAPI
 from pytest_bdd import given
 from starlette.testclient import TestClient
 
-from ers.config import Settings
+# TODO: ers.config depends on pydantic-settings which is not yet available on
+#       this branch.  Will be resolved once PR#19 (which introduces the
+#       ers.config module with its pydantic-settings dependency) is merged.
+#       Until then, the link_curation_api feature tests cannot be collected.
+from ers.config import Settings  # noqa: E402 — see TODO above
 from ers.curation.adapters import (
     DecisionCurationRepository,
     EntityMentionCurationRepository,

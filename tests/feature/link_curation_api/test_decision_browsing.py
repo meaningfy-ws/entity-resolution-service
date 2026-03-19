@@ -86,6 +86,11 @@ def test_beyond_last_page():
     pass
 
 
+@scenario(FEATURE, "Apply multiple filters simultaneously")
+def test_combined_filters():
+    pass
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -442,3 +447,63 @@ def total_count_is(response: Any, count: int) -> None:
 @then(parsers.parse("the next page indicator points to page {page:d}"))
 def next_page_to(response: Any, page: int) -> None:
     assert response.json()["next"] == page
+
+
+# --- Combined filters ---
+
+
+@given(
+    parsers.parse(
+        'decisions exist for entity types "{type_a}" and "{type_b}" '
+        "with varying confidence scores"
+    ),
+)
+def decisions_for_types_with_confidence(
+    ctx: dict[str, Any],
+    type_a: str,
+    type_b: str,
+    decision_repository: AsyncMock,
+    entity_mention_repository: AsyncMock,
+) -> None:
+    _setup_decisions(decision_repository, entity_mention_repository, 2, prefix="d-combo")
+    ctx["entity_types"] = (type_a, type_b)
+
+
+@when(
+    parsers.parse(
+        'the curator filters decisions by entity type "{entity_type}" '
+        "with maximum confidence {max_conf}"
+    ),
+    target_fixture="response",
+)
+def filter_by_type_and_confidence(
+    client: TestClient,
+    entity_type: str,
+    max_conf: str,
+) -> Any:
+    return client.get(
+        DECISIONS_URL,
+        params={
+            "entity_type": ENTITY_TYPE_MAP.get(entity_type, entity_type),
+            "confidence_max": max_conf,
+        },
+    )
+
+
+@then(
+    parsers.parse(
+        'only decisions for "{entity_type}" entities '
+        "with confidence at or below {max_conf} are returned"
+    ),
+)
+def combined_filter_applied(
+    response: Any,
+    entity_type: str,
+    max_conf: str,
+    decision_repository: AsyncMock,
+) -> None:
+    assert response.status_code == 200
+    call_args = decision_repository.find_with_filters.call_args
+    filters = call_args.kwargs["filters"]
+    assert filters.entity_type is not None
+    assert filters.confidence_max is not None

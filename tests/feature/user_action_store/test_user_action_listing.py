@@ -56,6 +56,11 @@ def test_missing_mention_partial_preview():
     pass
 
 
+@scenario(FEATURE, "Filter the action trail by a single criterion")
+def test_filter_action_trail():
+    pass
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -292,3 +297,66 @@ def parsed_representation_is_empty(
 ) -> None:
     for summary in listing_result.results:
         assert summary.about_entity_mention.parsed_representation is None
+
+
+# ---------------------------------------------------------------------------
+# Filtering (TODO: requires adding filter support to UserActionService)
+# ---------------------------------------------------------------------------
+
+
+@given(
+    "user actions have been recorded by multiple curators across different "
+    "recommendation types and time periods",
+)
+def diverse_actions_recorded(
+    user_action_repository: MagicMock,
+    entity_mention_repository: MagicMock,
+) -> None:
+    # TODO: Set up user_action_repository with actions spanning different
+    #       actors, action types, and time ranges so the filtering scenarios
+    #       can verify correct subsetting.
+    actions = _build_actions(10)
+    user_action_repository.find_paginated.return_value = PaginatedResult(
+        count=len(actions),
+        previous=None,
+        next=None,
+        results=actions,
+    )
+    entity_mention_repository.find_by_identifiers.return_value = []
+
+
+@when(
+    parsers.parse("the action listing is filtered by {criterion} matching {value}"),
+    target_fixture="listing_result",
+)
+def filter_action_listing(
+    criterion: str,
+    value: str,
+    user_action_service: UserActionService,
+) -> PaginatedResult[UserActionSummary]:
+    # TODO: UserActionService.list_user_actions() currently only accepts
+    #       PaginationParams.  Add filtering support:
+    #         - recommendation type → filter by UserActionType
+    #         - actor → filter by actor email
+    #         - time range → filter by date range (from/to)
+    #       Then call the service with the appropriate filter params here.
+    return asyncio.run(
+        user_action_service.list_user_actions(PaginationParams()),
+    )
+
+
+@then(parsers.parse("only actions matching {value} are returned"))
+def only_matching_actions(
+    listing_result: PaginatedResult[UserActionSummary],
+    value: str,
+) -> None:
+    # TODO: Verify that all returned actions match the filter value.
+    pass
+
+
+@then("actions that do not match are excluded")
+def non_matching_excluded(
+    listing_result: PaginatedResult[UserActionSummary],
+) -> None:
+    # TODO: Verify that no returned actions fail the filter predicate.
+    pass

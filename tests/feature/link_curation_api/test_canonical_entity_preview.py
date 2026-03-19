@@ -59,6 +59,11 @@ def test_alternatives_not_found():
     pass
 
 
+@scenario(FEATURE, "Canonical entity preview with mentions lacking parsed representations")
+def test_preview_missing_representations():
+    pass
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -309,3 +314,38 @@ def empty_results(response: Any) -> None:
 @then("the system responds with a not found error")
 def not_found(response: Any) -> None:
     assert response.status_code == 404
+
+
+# --- Incomplete data ---
+
+
+@given(
+    parsers.parse(
+        'cluster "{cluster_id}" contains entity mentions with no parsed representations'
+    ),
+)
+def cluster_has_mentions_without_parsed(
+    ctx: dict[str, Any],
+    cluster_id: str,
+    decision_repository: AsyncMock,
+    entity_mention_repository: AsyncMock,
+) -> None:
+    identifiers = EntityMentionIdentifierFactory.batch(3)
+    mentions = [
+        EntityMentionFactory.build(identifiedBy=eid, parsed_representation=None)
+        for eid in identifiers
+    ]
+    decision_repository.find_mention_ids_by_cluster.return_value = identifiers
+    entity_mention_repository.find_by_identifiers.return_value = mentions
+
+
+@then(
+    "the preview includes only the entity mention identifiers where parsed representations are absent",
+)
+def preview_shows_identifiers_only(response: Any) -> None:
+    assert response.status_code == 200
+    data = response.json()
+    for entity in data.get("top_entities", []):
+        # TODO: Verify that when parsed_representation is absent, the preview
+        #       still includes the entity mention identifier fields.
+        assert "identified_by" in entity or "identifiedBy" in entity

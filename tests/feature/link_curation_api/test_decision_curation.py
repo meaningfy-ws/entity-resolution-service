@@ -1,8 +1,8 @@
 """Step definitions for decision_curation.feature.
 
-Tests the POST accept/reject/assign endpoints through the FastAPI test client.
-Repository mocks let real DecisionCurationService + UserActionService logic
-run end-to-end.
+Tests the decision detail view and POST accept/reject/assign endpoints through
+the FastAPI test client.  Repository mocks let real DecisionCurationService +
+UserActionService logic run end-to-end.
 """
 
 from pathlib import Path
@@ -24,49 +24,86 @@ DECISIONS_URL = "/api/v1/curation/decisions"
 # ---------------------------------------------------------------------------
 
 
-@scenario(FEATURE, "Accept the top candidate for a decision")
-def test_accept():
+# --- View decision ---
+
+
+@scenario(FEATURE, "View full details of a resolution decision")
+def test_view_decision():
     pass
 
 
-@scenario(FEATURE, "Accept a non-existent decision")
-def test_accept_not_found():
+@scenario(FEATURE, "View details of a non-existent decision")
+def test_view_decision_not_found():
     pass
 
 
-@scenario(FEATURE, "Accept a decision that was already curated")
-def test_accept_already_curated():
+# --- Recommend top candidate ---
+
+
+@scenario(FEATURE, "Recommend placement of the top candidate for a decision")
+def test_recommend_top():
     pass
 
 
-@scenario(FEATURE, "Reject all candidates for a decision")
-def test_reject():
+@scenario(FEATURE, "Recommend top candidate for a non-existent decision")
+def test_recommend_top_not_found():
     pass
 
 
-@scenario(FEATURE, "Reject a non-existent decision")
-def test_reject_not_found():
+@scenario(FEATURE, "Recommend top candidate for a decision already curated on its current version")
+def test_recommend_top_already_curated():
     pass
 
 
-@scenario(FEATURE, "Assign a decision to an alternative cluster")
-def test_assign():
+# --- Recommend rejection ---
+
+
+@scenario(FEATURE, "Recommend rejection of all candidates for a decision")
+def test_recommend_rejection():
     pass
 
 
-@scenario(FEATURE, "Assign to a cluster not in candidates")
-def test_assign_invalid():
+@scenario(FEATURE, "Recommend rejection for a non-existent decision")
+def test_recommend_rejection_not_found():
     pass
 
 
-@scenario(FEATURE, "Assign a non-existent decision")
-def test_assign_not_found():
+# --- Recommend alternative cluster ---
+
+
+@scenario(FEATURE, "Recommend placement in an alternative cluster")
+def test_recommend_alternative():
+    pass
+
+
+@scenario(FEATURE, "Recommend a cluster that is not among the candidates")
+def test_recommend_invalid_cluster():
+    pass
+
+
+@scenario(FEATURE, "Recommend alternative cluster placement for a non-existent decision")
+def test_recommend_alternative_not_found():
     pass
 
 
 # ---------------------------------------------------------------------------
 # Given
 # ---------------------------------------------------------------------------
+
+
+@given(
+    "a resolution decision exists with entity mention preview, current placement, and ranked candidates",
+)
+def decision_with_full_context(
+    ctx: dict[str, Any],
+    decision_repository: AsyncMock,
+    entity_mention_repository: AsyncMock,
+) -> None:
+    # TODO: Set up a decision with entity mention preview, current placement,
+    #       ranked candidates with scores, and timestamps.  Wire both
+    #       decision_repository.find_by_id and entity_mention_repository
+    #       so the service can build a full detail response.
+    pass
 
 
 @given("a decision exists that has not been curated on its current version")
@@ -82,7 +119,7 @@ def decision_not_curated(
     ctx["decision_id"] = "decision-1"
 
 
-@given(parsers.parse('a decision exists with an alternative candidate "{cluster_id}"'))
+@given(parsers.parse('a decision exists with alternative candidate "{cluster_id}"'))
 def decision_with_alternative(
     ctx: dict[str, Any],
     cluster_id: str,
@@ -123,8 +160,38 @@ def decision_already_curated(
 # ---------------------------------------------------------------------------
 
 
-@when("the curator accepts the decision", target_fixture="response")
-def accept_decision(
+@when(
+    "the curator requests the full details of that decision",
+    target_fixture="response",
+)
+def request_decision_details(
+    client: TestClient,
+    ctx: dict[str, Any],
+) -> Any:
+    # TODO: Call the GET /decisions/{id} endpoint (or equivalent) that returns
+    #       full decision details including entity mention preview, placement,
+    #       candidates, and timestamps.
+    pass
+
+
+@when(
+    "the curator requests the details of a decision that does not exist",
+    target_fixture="response",
+)
+def request_nonexistent_decision_details(
+    client: TestClient,
+    decision_repository: AsyncMock,
+) -> Any:
+    # TODO: Call the GET /decisions/{id} endpoint for a non-existent ID.
+    #       Wire decision_repository.find_by_id.return_value = None.
+    pass
+
+
+@when(
+    "the curator recommends the top candidate placement for the decision",
+    target_fixture="response",
+)
+def recommend_top(
     client: TestClient,
     ctx: dict[str, Any],
 ) -> Any:
@@ -132,10 +199,10 @@ def accept_decision(
 
 
 @when(
-    "the curator attempts to accept a decision that does not exist",
+    "the curator attempts to recommend the top candidate for a decision that does not exist",
     target_fixture="response",
 )
-def accept_nonexistent(
+def recommend_top_nonexistent(
     client: TestClient,
     decision_repository: AsyncMock,
 ) -> Any:
@@ -143,16 +210,22 @@ def accept_nonexistent(
     return client.post(f"{DECISIONS_URL}/nonexistent/accept")
 
 
-@when("the curator attempts to accept the decision", target_fixture="response")
-def attempt_accept(
+@when(
+    "the curator attempts to recommend the top candidate placement for the decision",
+    target_fixture="response",
+)
+def attempt_recommend_top(
     client: TestClient,
     ctx: dict[str, Any],
 ) -> Any:
     return client.post(f"{DECISIONS_URL}/{ctx['decision_id']}/accept")
 
 
-@when("the curator rejects the decision", target_fixture="response")
-def reject_decision(
+@when(
+    "the curator recommends rejection of all candidates for the decision",
+    target_fixture="response",
+)
+def recommend_rejection(
     client: TestClient,
     ctx: dict[str, Any],
 ) -> Any:
@@ -160,10 +233,10 @@ def reject_decision(
 
 
 @when(
-    "the curator attempts to reject a decision that does not exist",
+    "the curator attempts to recommend rejection of all candidates for a decision that does not exist",
     target_fixture="response",
 )
-def reject_nonexistent(
+def recommend_rejection_nonexistent(
     client: TestClient,
     decision_repository: AsyncMock,
 ) -> Any:
@@ -172,10 +245,10 @@ def reject_nonexistent(
 
 
 @when(
-    parsers.parse('the curator assigns the decision to cluster "{cluster_id}"'),
+    parsers.parse('the curator recommends placement in cluster "{cluster_id}"'),
     target_fixture="response",
 )
-def assign_decision(
+def recommend_alternative(
     client: TestClient,
     ctx: dict[str, Any],
     cluster_id: str,
@@ -187,10 +260,10 @@ def assign_decision(
 
 
 @when(
-    "the curator attempts to assign a decision that does not exist to a cluster",
+    "the curator attempts to recommend alternative cluster placement for a decision that does not exist",
     target_fixture="response",
 )
-def assign_nonexistent(
+def recommend_alternative_nonexistent(
     client: TestClient,
     decision_repository: AsyncMock,
 ) -> Any:
@@ -206,13 +279,43 @@ def assign_nonexistent(
 # ---------------------------------------------------------------------------
 
 
-@then("the system confirms the action with no content")
-def confirms_no_content(response: Any) -> None:
+# --- View decision assertions ---
+
+
+@then("the decision details are returned including the entity mention preview")
+def decision_details_returned(response: Any) -> None:
+    # TODO: Assert 200 and that the response body contains the entity mention preview.
+    pass
+
+
+@then("the current placement is shown")
+def current_placement_shown(response: Any) -> None:
+    # TODO: Assert response body contains current_placement with cluster_id and scores.
+    pass
+
+
+@then("the ranked candidates with scores are listed")
+def ranked_candidates_listed(response: Any) -> None:
+    # TODO: Assert response body contains candidates list with confidence/similarity scores.
+    pass
+
+
+@then("the curation timestamps are included")
+def curation_timestamps_included(response: Any) -> None:
+    # TODO: Assert response body contains created_at and updated_at timestamps.
+    pass
+
+
+# --- Recommendation assertions ---
+
+
+@then("the recommendation is recorded")
+def recommendation_recorded(response: Any) -> None:
     assert response.status_code == 204
     assert response.content == b""
 
 
-@then(parsers.parse('a user action of type "{action_type}" is recorded'))
+@then(parsers.parse('a recommendation of type "{action_type}" is recorded'))
 def action_recorded(
     response: Any,
     action_type: str,
@@ -228,7 +331,9 @@ def action_recorded(
 
 
 @then(
-    parsers.parse('a user action of type "{action_type}" is recorded for cluster "{cluster_id}"'),
+    parsers.parse(
+        'a recommendation of type "{action_type}" is recorded for cluster "{cluster_id}"'
+    ),
 )
 def action_recorded_for_cluster(
     response: Any,
@@ -239,6 +344,9 @@ def action_recorded_for_cluster(
     user_action_repository.save.assert_called_once()
     saved_action = user_action_repository.save.call_args[0][0]
     assert saved_action.selected_cluster.cluster_id == cluster_id
+
+
+# --- Error assertions ---
 
 
 @then("the system responds with a not found error")
