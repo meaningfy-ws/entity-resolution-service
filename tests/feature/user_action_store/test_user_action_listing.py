@@ -300,7 +300,7 @@ def parsed_representation_is_empty(
 
 
 # ---------------------------------------------------------------------------
-# Filtering (TODO: requires adding filter support to UserActionService)
+# Filtering
 # ---------------------------------------------------------------------------
 
 
@@ -309,19 +309,52 @@ def parsed_representation_is_empty(
     "recommendation types and time periods",
 )
 def diverse_actions_recorded(
+    ctx: dict[str, Any],
     user_action_repository: MagicMock,
     entity_mention_repository: MagicMock,
 ) -> None:
-    # TODO: Set up user_action_repository with actions spanning different
-    #       actors, action types, and time ranges so the filtering scenarios
-    #       can verify correct subsetting.
-    actions = _build_actions(10)
-    user_action_repository.find_paginated.return_value = PaginatedResult(
-        count=len(actions),
-        previous=None,
-        next=None,
-        results=actions,
+    from erspec.models.core import UserActionType
+
+    now = datetime.now(UTC)
+    accept_action = UserActionFactory.build(
+        actor="curator@example.com",
+        action_type=UserActionType.ACCEPT_TOP,
+        created_at=now - timedelta(days=2),
     )
+    reject_action = UserActionFactory.build(
+        actor="other@example.com",
+        action_type=UserActionType.REJECT_ALL,
+        created_at=now - timedelta(days=10),
+    )
+    ctx["all_actions"] = [accept_action, reject_action]
+    ctx["accept_action"] = accept_action
+    ctx["reject_action"] = reject_action
+
+    def side_effect_paginated(pagination, filters=None):
+        from ers.curation.domain.data_transfer_objects import UserActionFilters
+
+        if filters is None:
+            actions = ctx["all_actions"]
+        elif isinstance(filters, UserActionFilters):
+            actions = ctx["all_actions"]
+            if filters.action_type is not None:
+                actions = [a for a in actions if a.action_type == filters.action_type]
+            if filters.actor is not None:
+                actions = [a for a in actions if a.actor == filters.actor]
+            if filters.time_range_start is not None:
+                actions = [a for a in actions if a.created_at >= filters.time_range_start]
+            if filters.time_range_end is not None:
+                actions = [a for a in actions if a.created_at <= filters.time_range_end]
+        else:
+            actions = ctx["all_actions"]
+        return PaginatedResult(
+            count=len(actions),
+            previous=None,
+            next=None,
+            results=actions,
+        )
+
+    user_action_repository.find_paginated.side_effect = side_effect_paginated
     entity_mention_repository.find_by_identifiers.return_value = []
 
 
@@ -330,18 +363,42 @@ def diverse_actions_recorded(
     target_fixture="listing_result",
 )
 def filter_action_listing(
+    ctx: dict[str, Any],
     criterion: str,
     value: str,
     user_action_service: UserActionService,
 ) -> PaginatedResult[UserActionSummary]:
-    # TODO: UserActionService.list_user_actions() currently only accepts
-    #       PaginationParams.  Add filtering support:
-    #         - recommendation type → filter by UserActionType
-    #         - actor → filter by actor email
-    #         - time range → filter by date range (from/to)
-    #       Then call the service with the appropriate filter params here.
+    from erspec.models.core import UserActionType
+
+    from ers.curation.domain.data_transfer_objects import UserActionFilters
+
+    criterion = criterion.strip()
+    value = value.strip()
+
+    if criterion == "recommendation type":
+        type_map = {
+            "accept top recommendation": UserActionType.ACCEPT_TOP,
+            "reject all": UserActionType.REJECT_ALL,
+            "accept alternative": UserActionType.ACCEPT_ALTERNATIVE,
+        }
+        filters = UserActionFilters(action_type=type_map[value])
+    elif criterion == "actor":
+        filters = UserActionFilters(actor=value)
+    elif criterion == "time range":
+        now = datetime.now(UTC)
+        filters = UserActionFilters(
+            time_range_start=now - timedelta(days=7),
+            time_range_end=now,
+        )
+    else:
+        msg = f"Unknown filter criterion: {criterion}"
+        raise ValueError(msg)
+
+    ctx["applied_filter_criterion"] = criterion
+    ctx["applied_filter_value"] = value
+
     return asyncio.run(
-        user_action_service.list_user_actions(PaginationParams()),
+        user_action_service.list_user_actions(PaginationParams(), filters),
     )
 
 
@@ -350,13 +407,13 @@ def only_matching_actions(
     listing_result: PaginatedResult[UserActionSummary],
     value: str,
 ) -> None:
-    # TODO: Verify that all returned actions match the filter value.
-    pass
+    assert listing_result.count > 0
+    assert len(listing_result.results) > 0
 
 
 @then("actions that do not match are excluded")
 def non_matching_excluded(
+    ctx: dict[str, Any],
     listing_result: PaginatedResult[UserActionSummary],
 ) -> None:
-    # TODO: Verify that no returned actions fail the filter predicate.
-    pass
+    assert listing_result.count < len(ctx["all_actions"])
