@@ -16,11 +16,6 @@ from fastapi import FastAPI
 from pytest_bdd import given
 from starlette.testclient import TestClient
 
-# TODO: ers.config depends on pydantic-settings which is not yet available on
-#       this branch.  Will be resolved once PR#19 (which introduces the
-#       ers.config module with its pydantic-settings dependency) is merged.
-#       Until then, the link_curation_api feature tests cannot be collected.
-from ers.config import Settings
 from ers.curation.adapters import (
     DecisionCurationRepository,
     EntityMentionCurationRepository,
@@ -209,23 +204,12 @@ def user_management_service(
 
 
 # ---------------------------------------------------------------------------
-# Settings
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture
-def settings() -> Settings:
-    return Settings(app_name="Test ERS", debug=True)
-
-
-# ---------------------------------------------------------------------------
 # FastAPI app and client
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture
 def app(
-    settings: Settings,
     decision_curation_service: DecisionCurationService,
     canonical_entity_service: CanonicalEntityService,
     entity_service: EntityService,
@@ -234,7 +218,7 @@ def app(
     user_action_service: UserActionService,
     user_management_service: UserManagementService,
 ) -> FastAPI:
-    application = create_app(settings=settings)
+    application = create_app()
     application.dependency_overrides[get_decision_curation_service] = lambda: (
         decision_curation_service
     )
