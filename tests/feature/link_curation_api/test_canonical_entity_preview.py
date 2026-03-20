@@ -320,9 +320,7 @@ def not_found(response: Any) -> None:
 
 
 @given(
-    parsers.parse(
-        'cluster "{cluster_id}" contains entity mentions with no parsed representations'
-    ),
+    parsers.parse('cluster "{cluster_id}" contains entity mentions with no parsed representations'),
 )
 def cluster_has_mentions_without_parsed(
     ctx: dict[str, Any],
@@ -346,6 +344,5 @@ def preview_shows_identifiers_only(response: Any) -> None:
     assert response.status_code == 200
     data = response.json()
     for entity in data.get("top_entities", []):
-        # TODO: Verify that when parsed_representation is absent, the preview
-        #       still includes the entity mention identifier fields.
-        assert "identified_by" in entity or "identifiedBy" in entity
+        assert "identified_by" in entity
+        assert entity["parsed_representation"] is None
