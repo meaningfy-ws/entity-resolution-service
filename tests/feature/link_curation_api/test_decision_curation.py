@@ -1,8 +1,8 @@
 """Step definitions for decision_curation.feature.
 
-Tests the decision detail view and POST accept/reject/assign endpoints through
-the FastAPI test client.  Repository mocks let real DecisionCurationService +
-UserActionService logic run end-to-end.
+Tests the decision detail context (via listing and canonical entity endpoints)
+and POST accept/reject/assign endpoints through the FastAPI test client.
+Repository mocks let real services run end-to-end.
 """
 
 from pathlib import Path
@@ -12,7 +12,12 @@ from unittest.mock import AsyncMock
 from pytest_bdd import given, parsers, scenario, then, when
 from starlette.testclient import TestClient
 
-from tests.unit.factories import ClusterReferenceFactory, DecisionFactory
+from ers.commons.domain.data_transfer_objects import PaginatedResult
+from tests.unit.factories import (
+    ClusterReferenceFactory,
+    DecisionFactory,
+    EntityMentionFactory,
+)
 
 FEATURE = str(Path(__file__).resolve().parent / "decision_curation.feature")
 
@@ -99,11 +104,25 @@ def decision_with_full_context(
     decision_repository: AsyncMock,
     entity_mention_repository: AsyncMock,
 ) -> None:
-    # TODO: Set up a decision with entity mention preview, current placement,
-    #       ranked candidates with scores, and timestamps.  Wire both
-    #       decision_repository.find_by_id and entity_mention_repository
-    #       so the service can build a full detail response.
-    pass
+    identifier = EntityMentionFactory.build().identifiedBy
+    candidates = [ClusterReferenceFactory.build() for _ in range(3)]
+    decision = DecisionFactory.build(
+        id="decision-1",
+        about_entity_mention=identifier,
+        candidates=candidates,
+    )
+    mention = EntityMentionFactory.build(identifiedBy=identifier)
+
+    decision_repository.find_with_filters.return_value = PaginatedResult(
+        count=1,
+        previous=None,
+        next=None,
+        results=[decision],
+    )
+    decision_repository.find_by_id.return_value = decision
+    decision_repository.find_mention_ids_by_cluster.return_value = [identifier]
+    entity_mention_repository.find_by_identifiers.return_value = [mention]
+    ctx["decision_id"] = "decision-1"
 
 
 @given("a decision exists that has not been curated on its current version")
@@ -162,29 +181,36 @@ def decision_already_curated(
 
 @when(
     "the curator requests the full details of that decision",
-    target_fixture="response",
+    target_fixture="responses",
 )
-def request_decision_details(
+def view_decision_full_details(
     client: TestClient,
     ctx: dict[str, Any],
-) -> Any:
-    # TODO: Call the GET /decisions/{id} endpoint (or equivalent) that returns
-    #       full decision details including entity mention preview, placement,
-    #       candidates, and timestamps.
-    pass
+) -> dict[str, Any]:
+    decision_id = ctx["decision_id"]
+    return {
+        "list": client.get(DECISIONS_URL),
+        "proposed": client.get(
+            f"{DECISIONS_URL}/{decision_id}/proposed-canonical-entity",
+        ),
+        "alternatives": client.get(
+            f"{DECISIONS_URL}/{decision_id}/alternative-canonical-entities",
+        ),
+    }
 
 
 @when(
     "the curator requests the details of a decision that does not exist",
     target_fixture="response",
 )
-def request_nonexistent_decision_details(
+def request_details_nonexistent(
     client: TestClient,
     decision_repository: AsyncMock,
 ) -> Any:
-    # TODO: Call the GET /decisions/{id} endpoint for a non-existent ID.
-    #       Wire decision_repository.find_by_id.return_value = None.
-    pass
+    decision_repository.find_by_id.return_value = None
+    return client.get(
+        f"{DECISIONS_URL}/nonexistent/proposed-canonical-entity",
+    )
 
 
 @when(
@@ -283,27 +309,37 @@ def recommend_alternative_nonexistent(
 
 
 @then("the decision details are returned including the entity mention preview")
-def decision_details_returned(response: Any) -> None:
-    # TODO: Assert 200 and that the response body contains the entity mention preview.
-    pass
+def details_include_entity_mention(responses: dict[str, Any]) -> None:
+    resp = responses["list"]
+    assert resp.status_code == 200
+    for item in resp.json()["results"]:
+        assert "about_entity_mention" in item
 
 
 @then("the current placement is shown")
-def current_placement_shown(response: Any) -> None:
-    # TODO: Assert response body contains current_placement with cluster_id and scores.
-    pass
+def current_placement_shown(responses: dict[str, Any]) -> None:
+    for item in responses["list"].json()["results"]:
+        assert "current_placement" in item
 
 
 @then("the ranked candidates with scores are listed")
-def ranked_candidates_listed(response: Any) -> None:
-    # TODO: Assert response body contains candidates list with confidence/similarity scores.
-    pass
+def ranked_candidates_listed(responses: dict[str, Any]) -> None:
+    proposed = responses["proposed"]
+    assert proposed.status_code == 200
+    data = proposed.json()
+    assert "cluster_id" in data
+    assert "top_entities" in data
+    assert len(data["top_entities"]) > 0
+
+    alternatives = responses["alternatives"]
+    assert alternatives.status_code == 200
+    assert "results" in alternatives.json()
 
 
 @then("the curation timestamps are included")
-def curation_timestamps_included(response: Any) -> None:
-    # TODO: Assert response body contains created_at and updated_at timestamps.
-    pass
+def curation_timestamps_included(responses: dict[str, Any]) -> None:
+    for item in responses["list"].json()["results"]:
+        assert "created_at" in item
 
 
 # --- Recommendation assertions ---
