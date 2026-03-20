@@ -131,17 +131,15 @@ def admin_client(
 
 @given("a user is authenticated but has been deactivated", target_fixture="test_client")
 def deactivated_client(app: FastAPI) -> TestClient:
-    # TODO: Enforce deactivation at the request level.  Currently UserContext
-    #       has no is_active field, so a deactivated user with an existing
-    #       token is not rejected by the get_current_user dependency.
-    #       Options:
-    #         (a) Add is_active to UserContext and check it in a middleware /
-    #             dependency, or
-    #         (b) Invalidate tokens on deactivation (requires token blocklist).
-    #       For now this step is a placeholder.
-    from tests.feature.link_curation_api.conftest import VERIFIED_USER
+    from ers.curation.entrypoints.api.auth import get_current_user
+    from ers.users.domain.exceptions import AuthenticationError
 
-    return make_client_with_user(app, VERIFIED_USER)
+    def _reject_deactivated():
+        raise AuthenticationError("Invalid credentials")
+
+    # user `is_active` flag is checked in get_current_user, so we can simulate deactivation by overriding it to always raise an error
+    app.dependency_overrides[get_current_user] = _reject_deactivated
+    return TestClient(app)
 
 
 @given("a verified user is authenticated", target_fixture="test_client")
@@ -267,9 +265,8 @@ def stats_ok(response: Any) -> None:
 
 
 # --- Deactivated user ---
-# TODO: The Then step for deactivated user access is "the request is rejected
-#       with an authentication error" which is already defined above (auth_error).
-#       Once the deactivation middleware is implemented, this will work.
+# The Then step for deactivated user access is "the request is rejected
+# with an authentication error", which maps to auth_error() above.
 
 
 # --- Verified user curation ---

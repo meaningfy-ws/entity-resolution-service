@@ -20,7 +20,7 @@ from starlette.testclient import TestClient
 #       this branch.  Will be resolved once PR#19 (which introduces the
 #       ers.config module with its pydantic-settings dependency) is merged.
 #       Until then, the link_curation_api feature tests cannot be collected.
-from ers.config import Settings  # noqa: E402 — see TODO above
+from ers.config import Settings
 from ers.curation.adapters import (
     DecisionCurationRepository,
     EntityMentionCurationRepository,
@@ -54,6 +54,7 @@ from ers.users.services.token_service import TokenService
 ADMIN_USER = UserContext(
     id="admin-user-id",
     email="admin@example.com",
+    is_active=True,
     is_superuser=True,
     is_verified=True,
 )
@@ -61,6 +62,7 @@ ADMIN_USER = UserContext(
 VERIFIED_USER = UserContext(
     id="verified-user-id",
     email="curator@example.com",
+    is_active=True,
     is_superuser=False,
     is_verified=True,
 )
@@ -68,6 +70,7 @@ VERIFIED_USER = UserContext(
 UNVERIFIED_USER = UserContext(
     id="unverified-user-id",
     email="unverified@example.com",
+    is_active=True,
     is_superuser=False,
     is_verified=False,
 )
