@@ -35,9 +35,9 @@ Feature: User management
 
     Examples:
       | flag          | value |
-      | active        | false |
-      | superuser     | true  |
-      | verified      | true  |
+      | is_active     | false |
+      | is_superuser  | true  |
+      | is_verified   | true  |
 
   Scenario: Update a non-existent user
     When the administrator attempts to update a user that does not exist

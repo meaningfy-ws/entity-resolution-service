@@ -1,6 +1,6 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator
+from typing import Any
 from unittest.mock import AsyncMock, create_autospec
 
 import pytest
@@ -32,6 +32,7 @@ from ers.users.services import AuthService, UserManagementService
 TEST_USER_CONTEXT = UserContext(
     id="test-user-id",
     email="test@example.com",
+    is_active=True,
     is_superuser=True,
     is_verified=True,
 )
