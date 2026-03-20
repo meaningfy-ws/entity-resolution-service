@@ -39,3 +39,15 @@ Feature: User action listing
     When the action listing is requested
     Then the action summary includes the entity mention identifier
     And the parsed representation is empty
+
+  Scenario Outline: Filter the action trail by a single criterion
+    Given user actions have been recorded by multiple curators across different recommendation types and time periods
+    When the action listing is filtered by <filter criterion> matching <filter value>
+    Then only actions matching <filter value> are returned
+    And actions that do not match are excluded
+
+    Examples:
+      | filter criterion | filter value               |
+      | recommendation type  | accept top recommendation  |
+      | actor            | curator@example.com        |
+      | time range       | last 7 days                |

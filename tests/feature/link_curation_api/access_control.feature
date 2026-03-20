@@ -50,6 +50,13 @@ Feature: Access control
     When the administrator requests the user action trail
     Then the action trail is returned successfully
 
+  # --- Deactivated user ---
+
+  Scenario: Deactivated user cannot access any endpoint
+    Given a user is authenticated but has been deactivated
+    When the user requests the decision list
+    Then the request is rejected with an authentication error
+
   # --- Verified user access ---
 
   Scenario: Verified user can browse decisions
@@ -61,3 +68,8 @@ Feature: Access control
     Given a verified user is authenticated
     When the user requests curation statistics
     Then the statistics are returned successfully
+
+  Scenario: Verified user can submit curation recommendations
+    Given a verified user is authenticated
+    When the user submits a curation recommendation for a decision
+    Then the recommendation is accepted successfully

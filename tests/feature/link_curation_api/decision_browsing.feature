@@ -33,7 +33,7 @@ Feature: Decision browsing and filtering
       | 0.0  | 1.0  |
 
   Scenario: Filter decisions by entity type
-    Given decisions exist for entity types "Organization" and "Person"
+    Given decisions exist for entity types "Organization" and "Procedure"
     When the curator filters decisions by entity type "Organization"
     Then only decisions for "Organization" entities are returned
 
@@ -62,6 +62,11 @@ Feature: Decision browsing and filtering
       | created at descending|
       | updated at ascending |
       | updated at descending|
+
+  Scenario: Apply multiple filters simultaneously
+    Given decisions exist for entity types "Organization" and "Procedure" with varying confidence scores
+    When the curator filters decisions by entity type "Organization" with maximum confidence 0.7
+    Then only decisions for "Organization" entities with confidence at or below 0.7 are returned
 
   # --- Search ---
 

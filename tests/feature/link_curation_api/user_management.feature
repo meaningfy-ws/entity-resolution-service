@@ -1,7 +1,7 @@
 Feature: User management
   As an administrator
-  I need to create, list, update, and remove user accounts
-  So that I can control who has access to curation functionality
+  I need to create, list, update, and deactivate user accounts
+  So that I can control who has access to curation functionality while preserving traceability
 
   Background:
     Given the administrator is authenticated
@@ -35,24 +35,44 @@ Feature: User management
 
     Examples:
       | flag          | value |
-      | active        | false |
-      | superuser     | true  |
-      | verified      | true  |
+      | is_active     | false |
+      | is_superuser  | true  |
+      | is_verified   | true  |
 
   Scenario: Update a non-existent user
     When the administrator attempts to update a user that does not exist
     Then the system responds with a not found error
 
-  # --- Delete user ---
+  # --- Deactivate / reactivate user ---
 
-  Scenario: Delete a user
-    Given a user account exists
-    When the administrator deletes the user
-    Then the user is removed from the system
+  Scenario: Deactivate a user
+    Given a user account exists and is active
+    When the administrator deactivates the user
+    Then the user record is preserved with active set to false
+    And the user can no longer access the system
 
-  Scenario: Delete a non-existent user
-    When the administrator attempts to delete a user that does not exist
+  Scenario: Deactivate a non-existent user
+    When the administrator attempts to deactivate a user that does not exist
     Then the system responds with a not found error
+
+  Scenario: Reactivate a previously deactivated user
+    Given a user account exists and is deactivated
+    When the administrator reactivates the user
+    Then the user record reflects active set to true
+    And the user can access the system again
+
+  Scenario: Deactivated user's past actions remain visible in the action trail
+    Given a user account exists and is active
+    And the user has submitted curation actions
+    When the administrator deactivates the user
+    Then all past curation actions by that user remain visible
+    And each action is still attributable to the deactivated user
+
+  Scenario: Cannot deactivate the last administrator
+    Given only one active administrator account exists
+    When the administrator attempts to deactivate that administrator account
+    Then the system rejects the deactivation
+    And the administrator account remains active
 
   # --- Current user ---
 

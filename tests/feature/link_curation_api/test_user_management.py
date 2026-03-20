@@ -1,6 +1,6 @@
 """Step definitions for user_management.feature.
 
-Tests the admin user management endpoints (CRUD) through the FastAPI test client.
+Tests the admin user management endpoints through the FastAPI test client.
 Repository mocks let real UserManagementService logic run end-to-end.
 """
 
@@ -12,7 +12,7 @@ from pytest_bdd import given, parsers, scenario, then, when
 from starlette.testclient import TestClient
 
 from ers.commons.domain.data_transfer_objects import PaginatedResult
-from tests.unit.factories import UserFactory
+from tests.unit.factories import UserActionFactory, UserFactory
 
 FEATURE = str(Path(__file__).resolve().parent / "user_management.feature")
 
@@ -49,13 +49,28 @@ def test_update_not_found():
     pass
 
 
-@scenario(FEATURE, "Delete a user")
-def test_delete_user():
+@scenario(FEATURE, "Deactivate a user")
+def test_deactivate_user():
     pass
 
 
-@scenario(FEATURE, "Delete a non-existent user")
-def test_delete_not_found():
+@scenario(FEATURE, "Deactivate a non-existent user")
+def test_deactivate_not_found():
+    pass
+
+
+@scenario(FEATURE, "Reactivate a previously deactivated user")
+def test_reactivate_user():
+    pass
+
+
+@scenario(FEATURE, "Deactivated user's past actions remain visible in the action trail")
+def test_deactivated_user_traceability():
+    pass
+
+
+@scenario(FEATURE, "Cannot deactivate the last administrator")
+def test_cannot_deactivate_last_admin():
     pass
 
 
@@ -102,8 +117,54 @@ def user_account_exists(
     user = UserFactory.build(id="u-1")
     user_repository.find_by_id.return_value = user
     user_repository.save.return_value = None
-    user_repository.delete.return_value = True
+    user_repository.count_active_admins.return_value = 2
     return "u-1"
+
+
+@given("a user account exists and is active", target_fixture="user_id")
+def user_account_active(
+    user_repository: AsyncMock,
+) -> str:
+    user = UserFactory.build(id="u-1", is_active=True, is_superuser=False)
+    user_repository.find_by_id.return_value = user
+    user_repository.save.return_value = None
+    user_repository.count_active_admins.return_value = 2
+    return "u-1"
+
+
+@given("a user account exists and is deactivated", target_fixture="user_id")
+def user_account_deactivated(
+    user_repository: AsyncMock,
+) -> str:
+    user = UserFactory.build(id="u-1", is_active=False)
+    user_repository.find_by_id.return_value = user
+    user_repository.save.return_value = None
+    return "u-1"
+
+
+@given("the user has submitted curation actions")
+def user_has_curation_actions(
+    ctx: dict[str, Any],
+    user_action_repository: AsyncMock,
+) -> None:
+    actions = [UserActionFactory.build(actor="u-1") for _ in range(3)]
+    user_action_repository.find_paginated.return_value = PaginatedResult(
+        count=len(actions),
+        results=actions,
+    )
+    ctx["user_has_actions"] = True
+    ctx["expected_action_count"] = len(actions)
+
+
+@given("only one active administrator account exists")
+def only_one_admin(
+    ctx: dict[str, Any],
+    user_repository: AsyncMock,
+) -> None:
+    admin = UserFactory.build(id="admin-1", is_active=True, is_superuser=True)
+    user_repository.find_by_id.return_value = admin
+    user_repository.count_active_admins.return_value = 1
+    ctx["last_admin_id"] = "admin-1"
 
 
 # ---------------------------------------------------------------------------
@@ -178,21 +239,50 @@ def admin_patches_nonexistent(
     )
 
 
-@when("the administrator deletes the user", target_fixture="response")
-def admin_deletes_user(client: TestClient, user_id: str) -> Any:
-    return client.delete(f"{USERS_URL}/{user_id}")
+@when("the administrator deactivates the user", target_fixture="response")
+def admin_deactivates_user(client: TestClient, user_id: str) -> Any:
+    return client.patch(
+        f"{USERS_URL}/{user_id}",
+        json={"is_active": False},
+    )
 
 
 @when(
-    "the administrator attempts to delete a user that does not exist",
+    "the administrator attempts to deactivate a user that does not exist",
     target_fixture="response",
 )
-def admin_deletes_nonexistent(
+def admin_deactivates_nonexistent(
     client: TestClient,
     user_repository: AsyncMock,
 ) -> Any:
-    user_repository.delete.return_value = False
-    return client.delete(f"{USERS_URL}/nonexistent")
+    user_repository.find_by_id.return_value = None
+    return client.patch(
+        f"{USERS_URL}/nonexistent",
+        json={"is_active": False},
+    )
+
+
+@when("the administrator reactivates the user", target_fixture="response")
+def admin_reactivates_user(client: TestClient, user_id: str) -> Any:
+    return client.patch(
+        f"{USERS_URL}/{user_id}",
+        json={"is_active": True},
+    )
+
+
+@when(
+    "the administrator attempts to deactivate that administrator account",
+    target_fixture="response",
+)
+def admin_deactivates_self(
+    client: TestClient,
+    ctx: dict[str, Any],
+) -> Any:
+    admin_id = ctx.get("last_admin_id", "admin-1")
+    return client.patch(
+        f"{USERS_URL}/{admin_id}",
+        json={"is_active": False},
+    )
 
 
 @when(
@@ -247,9 +337,60 @@ def not_found(response: Any) -> None:
     assert response.status_code == 404
 
 
-@then("the user is removed from the system")
-def user_removed(response: Any) -> None:
-    assert response.status_code == 204
+@then("the user record is preserved with active set to false")
+def user_deactivated(response: Any) -> None:
+    assert response.status_code == 200
+    assert response.json()["is_active"] is False
+
+
+@then("the user can no longer access the system")
+def user_cannot_access(response: Any) -> None:
+    data = response.json()
+    assert data.get("is_active") is False
+
+
+@then("the user record reflects active set to true")
+def user_reactivated(response: Any) -> None:
+    assert response.status_code == 200
+    assert response.json()["is_active"] is True
+
+
+@then("the user can access the system again")
+def user_can_access(response: Any) -> None:
+    data = response.json()
+    assert data.get("is_active") is True
+
+
+@then("all past curation actions by that user remain visible")
+def past_actions_visible(
+    response: Any,
+    ctx: dict[str, Any],
+    user_action_repository: AsyncMock,
+) -> None:
+    paginated = user_action_repository.find_paginated.return_value
+    assert paginated.count == ctx["expected_action_count"]
+
+
+@then("each action is still attributable to the deactivated user")
+def actions_attributable(
+    response: Any,
+    ctx: dict[str, Any],
+    user_action_repository: AsyncMock,
+) -> None:
+    paginated = user_action_repository.find_paginated.return_value
+    for action in paginated.results:
+        assert action.actor == "u-1"
+
+
+@then("the system rejects the deactivation")
+def deactivation_rejected(response: Any) -> None:
+    assert response.status_code == 409
+
+
+@then("the administrator account remains active")
+def admin_remains_active(response: Any) -> None:
+    assert response.status_code == 409
+    assert "last active administrator" in response.json()["detail"].lower()
 
 
 @then("the response contains the user's email and role flags")

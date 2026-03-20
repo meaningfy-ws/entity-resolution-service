@@ -74,6 +74,11 @@ def test_admin_action_trail():
     pass
 
 
+@scenario(FEATURE, "Deactivated user cannot access any endpoint")
+def test_deactivated_denied():
+    pass
+
+
 @scenario(FEATURE, "Verified user can browse decisions")
 def test_verified_browse():
     pass
@@ -81,6 +86,11 @@ def test_verified_browse():
 
 @scenario(FEATURE, "Verified user can view statistics")
 def test_verified_statistics():
+    pass
+
+
+@scenario(FEATURE, "Verified user can submit curation recommendations")
+def test_verified_can_curate():
     pass
 
 
@@ -117,6 +127,19 @@ def admin_client(
         results=[],
     )
     return make_client_with_user(app, ADMIN_USER)
+
+
+@given("a user is authenticated but has been deactivated", target_fixture="test_client")
+def deactivated_client(app: FastAPI) -> TestClient:
+    from ers.curation.entrypoints.api.auth import get_current_user
+    from ers.users.domain.exceptions import AuthenticationError
+
+    def _reject_deactivated():
+        raise AuthenticationError("Invalid credentials")
+
+    # user `is_active` flag is checked in get_current_user, so we can simulate deactivation by overriding it to always raise an error
+    app.dependency_overrides[get_current_user] = _reject_deactivated
+    return TestClient(app)
 
 
 @given("a verified user is authenticated", target_fixture="test_client")
@@ -239,3 +262,34 @@ def decision_list_ok(response: Any) -> None:
 @then("the statistics are returned successfully")
 def stats_ok(response: Any) -> None:
     assert response.status_code == 200
+
+
+# --- Deactivated user ---
+# The Then step for deactivated user access is "the request is rejected
+# with an authentication error", which maps to auth_error() above.
+
+
+# --- Verified user curation ---
+
+
+@when(
+    "the user submits a curation recommendation for a decision",
+    target_fixture="response",
+)
+def user_submits_recommendation(
+    test_client: TestClient,
+    decision_repository: AsyncMock,
+    user_action_repository: AsyncMock,
+) -> Any:
+    from tests.unit.factories import DecisionFactory
+
+    decision = DecisionFactory.build(id="decision-1")
+    decision_repository.find_by_id.return_value = decision
+    user_action_repository.has_current_action.return_value = False
+    user_action_repository.save.return_value = None
+    return test_client.post(f"{DECISIONS_URL}/decision-1/accept")
+
+
+@then("the recommendation is accepted successfully")
+def recommendation_accepted(response: Any) -> None:
+    assert response.status_code == 204

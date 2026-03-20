@@ -56,6 +56,11 @@ def test_missing_mention_partial_preview():
     pass
 
 
+@scenario(FEATURE, "Filter the action trail by a single criterion")
+def test_filter_action_trail():
+    pass
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -292,3 +297,123 @@ def parsed_representation_is_empty(
 ) -> None:
     for summary in listing_result.results:
         assert summary.about_entity_mention.parsed_representation is None
+
+
+# ---------------------------------------------------------------------------
+# Filtering
+# ---------------------------------------------------------------------------
+
+
+@given(
+    "user actions have been recorded by multiple curators across different "
+    "recommendation types and time periods",
+)
+def diverse_actions_recorded(
+    ctx: dict[str, Any],
+    user_action_repository: MagicMock,
+    entity_mention_repository: MagicMock,
+) -> None:
+    from erspec.models.core import UserActionType
+
+    now = datetime.now(UTC)
+    accept_action = UserActionFactory.build(
+        actor="curator@example.com",
+        action_type=UserActionType.ACCEPT_TOP,
+        created_at=now - timedelta(days=2),
+    )
+    reject_action = UserActionFactory.build(
+        actor="other@example.com",
+        action_type=UserActionType.REJECT_ALL,
+        created_at=now - timedelta(days=10),
+    )
+    ctx["all_actions"] = [accept_action, reject_action]
+    ctx["accept_action"] = accept_action
+    ctx["reject_action"] = reject_action
+
+    def side_effect_paginated(pagination, filters=None):
+        from ers.curation.domain.data_transfer_objects import UserActionFilters
+
+        if filters is None:
+            actions = ctx["all_actions"]
+        elif isinstance(filters, UserActionFilters):
+            actions = ctx["all_actions"]
+            if filters.action_type is not None:
+                actions = [a for a in actions if a.action_type == filters.action_type]
+            if filters.actor is not None:
+                actions = [a for a in actions if a.actor == filters.actor]
+            if filters.time_range_start is not None:
+                actions = [a for a in actions if a.created_at >= filters.time_range_start]
+            if filters.time_range_end is not None:
+                actions = [a for a in actions if a.created_at <= filters.time_range_end]
+        else:
+            actions = ctx["all_actions"]
+        return PaginatedResult(
+            count=len(actions),
+            previous=None,
+            next=None,
+            results=actions,
+        )
+
+    user_action_repository.find_paginated.side_effect = side_effect_paginated
+    entity_mention_repository.find_by_identifiers.return_value = []
+
+
+@when(
+    parsers.parse("the action listing is filtered by {criterion} matching {value}"),
+    target_fixture="listing_result",
+)
+def filter_action_listing(
+    ctx: dict[str, Any],
+    criterion: str,
+    value: str,
+    user_action_service: UserActionService,
+) -> PaginatedResult[UserActionSummary]:
+    from erspec.models.core import UserActionType
+
+    from ers.curation.domain.data_transfer_objects import UserActionFilters
+
+    criterion = criterion.strip()
+    value = value.strip()
+
+    if criterion == "recommendation type":
+        type_map = {
+            "accept top recommendation": UserActionType.ACCEPT_TOP,
+            "reject all": UserActionType.REJECT_ALL,
+            "accept alternative": UserActionType.ACCEPT_ALTERNATIVE,
+        }
+        filters = UserActionFilters(action_type=type_map[value])
+    elif criterion == "actor":
+        filters = UserActionFilters(actor=value)
+    elif criterion == "time range":
+        now = datetime.now(UTC)
+        filters = UserActionFilters(
+            time_range_start=now - timedelta(days=7),
+            time_range_end=now,
+        )
+    else:
+        msg = f"Unknown filter criterion: {criterion}"
+        raise ValueError(msg)
+
+    ctx["applied_filter_criterion"] = criterion
+    ctx["applied_filter_value"] = value
+
+    return asyncio.run(
+        user_action_service.list_user_actions(PaginationParams(), filters),
+    )
+
+
+@then(parsers.parse("only actions matching {value} are returned"))
+def only_matching_actions(
+    listing_result: PaginatedResult[UserActionSummary],
+    value: str,
+) -> None:
+    assert listing_result.count > 0
+    assert len(listing_result.results) > 0
+
+
+@then("actions that do not match are excluded")
+def non_matching_excluded(
+    ctx: dict[str, Any],
+    listing_result: PaginatedResult[UserActionSummary],
+) -> None:
+    assert listing_result.count < len(ctx["all_actions"])
