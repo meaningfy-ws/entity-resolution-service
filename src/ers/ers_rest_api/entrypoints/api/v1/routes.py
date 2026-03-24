@@ -31,6 +31,7 @@ router = APIRouter(tags=["Resolution"])
     responses={
         200: {"description": "Canonical resolution"},
         202: {"description": "Provisional resolution"},
+        400: {"model": ErrorResponse, "description": "Validation error"},
     },
 )
 async def resolve(
@@ -49,7 +50,8 @@ async def resolve(
     "/lookup",
     response_model=LookupResponse,
     responses={
-        404: {"model": ErrorResponse},
+        400: {"model": ErrorResponse, "description": "Validation error"},
+        404: {"model": ErrorResponse, "description": "Mention not found"},
     },
 )
 async def lookup(
@@ -65,6 +67,9 @@ async def lookup(
 @router.post(
     "/refresh-bulk",
     response_model=RefreshBulkResponse,
+    responses={
+        400: {"model": ErrorResponse, "description": "Validation error"},
+    },
 )
 async def refresh_bulk(
     request: RefreshBulkRequest,

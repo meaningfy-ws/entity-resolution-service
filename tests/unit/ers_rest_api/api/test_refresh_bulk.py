@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock
 from erspec.models.core import ClusterReference, EntityMentionIdentifier
 from httpx import AsyncClient
 
+from ers.ers_rest_api.domain.errors import ErrorCode
 from ers.ers_rest_api.domain.lookup import (
     LookupResponse,
     RefreshBulkResponse,
@@ -140,34 +141,43 @@ class TestRefreshBulkEndpoint:
         assert response.status_code == 200
         refresh_bulk_service.handle_refresh_bulk.assert_called_once()
 
-    async def test_missing_source_id_returns_422(self, client: AsyncClient) -> None:
+    async def test_missing_source_id_returns_400(self, client: AsyncClient) -> None:
         response = await client.post("/api/v1/refresh-bulk", json={"limit": 100})
 
-        assert response.status_code == 422
+        assert response.status_code == 400
+        body = response.json()
+        assert body["error_code"] == ErrorCode.VALIDATION_ERROR
+        assert "source_id" in body["detail"]
 
-    async def test_empty_source_id_returns_422(self, client: AsyncClient) -> None:
+    async def test_empty_source_id_returns_400(self, client: AsyncClient) -> None:
         response = await client.post(
             "/api/v1/refresh-bulk",
             json={"source_id": "", "limit": 100},
         )
 
-        assert response.status_code == 422
+        assert response.status_code == 400
+        body = response.json()
+        assert body["error_code"] == ErrorCode.VALIDATION_ERROR
 
-    async def test_zero_limit_returns_422(self, client: AsyncClient) -> None:
+    async def test_zero_limit_returns_400(self, client: AsyncClient) -> None:
         response = await client.post(
             "/api/v1/refresh-bulk",
             json={"source_id": "SYSTEM_C", "limit": 0},
         )
 
-        assert response.status_code == 422
+        assert response.status_code == 400
+        body = response.json()
+        assert body["error_code"] == ErrorCode.VALIDATION_ERROR
 
-    async def test_negative_limit_returns_422(self, client: AsyncClient) -> None:
+    async def test_negative_limit_returns_400(self, client: AsyncClient) -> None:
         response = await client.post(
             "/api/v1/refresh-bulk",
             json={"source_id": "SYSTEM_C", "limit": -1},
         )
 
-        assert response.status_code == 422
+        assert response.status_code == 400
+        body = response.json()
+        assert body["error_code"] == ErrorCode.VALIDATION_ERROR
 
     async def test_default_limit_applied(
         self,

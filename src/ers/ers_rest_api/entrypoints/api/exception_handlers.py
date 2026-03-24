@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from ers.commons.domain.exceptions import DomainError
@@ -9,6 +10,24 @@ from ers.ers_rest_api.services.exceptions import MentionNotFoundError
 
 def register_exception_handlers(app: FastAPI) -> None:
     """Register exception handlers for the ERS REST API."""
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error_handler(
+        request: Request,
+        exc: RequestValidationError,
+    ) -> JSONResponse:
+        details = []
+        for err in exc.errors():
+            loc = " -> ".join(str(part) for part in err["loc"] if part != "body")
+            msg = err["msg"]
+            details.append(f"{loc}: {msg}" if loc else msg)
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error_code": ErrorCode.VALIDATION_ERROR,
+                "detail": "; ".join(details),
+            },
+        )
 
     @app.exception_handler(MentionNotFoundError)
     async def mention_not_found_handler(
