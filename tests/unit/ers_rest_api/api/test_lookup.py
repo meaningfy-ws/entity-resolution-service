@@ -1,13 +1,11 @@
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
-from erspec.models.core import ClusterReference
+from erspec.models.core import ClusterReference, EntityMentionIdentifier
 from httpx import AsyncClient
 
-from ers.ers_rest_api.domain.data_transfer_objects import (
-    ErrorCode,
-    LookupResponse,
-)
+from ers.ers_rest_api.domain.errors import ErrorCode
+from ers.ers_rest_api.domain.lookup import LookupResponse
 from ers.ers_rest_api.services.exceptions import MentionNotFoundError
 
 
@@ -18,6 +16,11 @@ class TestLookupEndpoint:
         lookup_service: AsyncMock,
     ) -> None:
         lookup_service.handle_lookup.return_value = LookupResponse(
+            identified_by=EntityMentionIdentifier(
+                source_id="SYSTEM_A",
+                request_id="req-001",
+                entity_type="ORGANISATION",
+            ),
             cluster_reference=ClusterReference(
                 cluster_id="cluster-010",
                 confidence_score=0.95,

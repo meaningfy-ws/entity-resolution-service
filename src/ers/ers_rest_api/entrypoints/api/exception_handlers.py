@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 
 from ers.commons.domain.exceptions import DomainError
 from ers.commons.services.exceptions import ApplicationError
-from ers.ers_rest_api.domain.data_transfer_objects import ErrorCode
+from ers.ers_rest_api.domain.errors import ErrorCode
 from ers.ers_rest_api.services.exceptions import MentionNotFoundError
 
 
