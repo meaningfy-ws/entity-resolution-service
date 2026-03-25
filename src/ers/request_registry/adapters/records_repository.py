@@ -1,12 +1,16 @@
 """Repository abstractions and MongoDB implementations for Request Registry records."""
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Any
 
 from erspec.models.core import EntityMentionIdentifier
 from pymongo.errors import ConnectionFailure, DuplicateKeyError, PyMongoError
 
-from ers.commons.adapters.repository import BaseMongoRepository
+from ers.commons.adapters.repository import (
+    AsyncReadRepository,
+    AsyncWriteRepository,
+    BaseMongoRepository,
+)
 from ers.request_registry.domain.records import LookupRequestRecord, ResolutionRequestRecord
 from ers.request_registry.services.exceptions import (
     DuplicateTriadError,
@@ -15,7 +19,10 @@ from ers.request_registry.services.exceptions import (
 )
 
 
-class ResolutionRequestRepository(ABC):
+class ResolutionRequestRepository(
+    AsyncReadRepository[ResolutionRequestRecord, str],
+    AsyncWriteRepository[ResolutionRequestRecord, str],
+):
     """Abstract repository for resolution request records."""
 
     @abstractmethod

@@ -84,7 +84,7 @@ class MongoStatisticsRepository(StatisticsRepository):
     ) -> RegistryStatistics:
         entity_filter: dict = {}
         if filters.entity_type is not None:
-            entity_filter["_id.entity_type"] = filters.entity_type
+            entity_filter["identifiedBy.entity_type"] = filters.entity_type
 
         total_entity_mentions = await self._resolution_requests.count_documents(entity_filter)
 
@@ -117,7 +117,7 @@ class MongoStatisticsRepository(StatisticsRepository):
         average_cluster_size = avg_result[0]["avg"] if avg_result else 0.0
 
         distinct_requests = await self._resolution_requests.distinct(
-            "_id.request_id",
+            "identifiedBy.request_id",
             entity_filter,
         )
         resolution_requests = len(distinct_requests)

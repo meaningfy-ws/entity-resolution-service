@@ -9,10 +9,9 @@ from ers.request_registry.adapters.records_repository import (
 
 
 class EntityMentionCurationRepository(ResolutionRequestRepository):
-    """Read-only repository for entity mention retrieval in curation.
+    """Repository for entity mention retrieval in curation.
 
-    Extends MongoResolutionRequestRepository (which operates on the
-    ``resolution_requests`` collection) with batch-fetch and full-text
+    Extends ``ResolutionRequestRepository`` with batch-fetch and full-text
     search capabilities needed by curation services.
     """
 
@@ -52,6 +51,6 @@ class MongoEntityMentionCurationRepository(
     ) -> list[EntityMentionIdentifier]:
         cursor = self._collection.find(
             {"$text": {"$search": text}},
-            projection={"_id": 1},
+            projection={"identifiedBy": 1, "_id": 0},
         )
-        return [EntityMentionIdentifier.model_validate(doc["_id"]) async for doc in cursor]
+        return [EntityMentionIdentifier.model_validate(doc["identifiedBy"]) async for doc in cursor]
