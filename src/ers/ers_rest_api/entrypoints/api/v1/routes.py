@@ -5,11 +5,15 @@ from fastapi import APIRouter, Depends, Query, Response, status
 from ers.commons.domain.data_transfer_objects import ResolutionOutcome
 from ers.ers_rest_api.domain.errors import ErrorResponse
 from ers.ers_rest_api.domain.lookup import (
+    BulkLookupRequest,
+    BulkLookupResponse,
     LookupResponse,
     RefreshBulkRequest,
     RefreshBulkResponse,
 )
 from ers.ers_rest_api.domain.resolution import (
+    BulkResolveRequest,
+    BulkResolveResponse,
     EntityMentionResolutionRequest,
     EntityMentionResolutionResult,
 )
@@ -46,6 +50,21 @@ async def resolve(
     return result
 
 
+@router.post(
+    "/resolve-bulk",
+    response_model=BulkResolveResponse,
+    responses={
+        400: {"model": ErrorResponse, "description": "Validation error"},
+    },
+)
+async def resolve_bulk(
+    request: BulkResolveRequest,
+    service: Annotated[ResolveService, Depends(get_resolve_service)],
+) -> BulkResolveResponse:
+    """Resolve multiple entity mentions in a single batch."""
+    return await service.handle_bulk_resolve(request)
+
+
 @router.get(
     "/lookup",
     response_model=LookupResponse,
@@ -62,6 +81,21 @@ async def lookup(
 ) -> LookupResponse:
     """Retrieve current cluster assignment for a mention triad."""
     return await service.handle_lookup(source_id, request_id, entity_type)
+
+
+@router.post(
+    "/lookup-bulk",
+    response_model=BulkLookupResponse,
+    responses={
+        400: {"model": ErrorResponse, "description": "Validation error"},
+    },
+)
+async def lookup_bulk(
+    request: BulkLookupRequest,
+    service: Annotated[LookupService, Depends(get_lookup_service)],
+) -> BulkLookupResponse:
+    """Look up cluster assignments for multiple entity mentions in a single batch."""
+    return await service.handle_bulk_lookup(request)
 
 
 @router.post(
