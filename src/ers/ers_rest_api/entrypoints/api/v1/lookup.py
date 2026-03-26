@@ -22,7 +22,6 @@ router = APIRouter(tags=["Lookup"])
 
 @router.get(
     "/lookup",
-    response_model=LookupResponse,
     responses={
         400: {"model": ErrorResponse, "description": "Validation error"},
         404: {"model": ErrorResponse, "description": "Mention not found"},
@@ -40,7 +39,6 @@ async def lookup(
 
 @router.post(
     "/lookup-bulk",
-    response_model=BulkLookupResponse,
     responses={
         400: {"model": ErrorResponse, "description": "Validation error"},
     },
@@ -55,7 +53,6 @@ async def lookup_bulk(
 
 @router.post(
     "/refresh-bulk",
-    response_model=RefreshBulkResponse,
     responses={
         400: {"model": ErrorResponse, "description": "Validation error"},
     },

@@ -18,7 +18,6 @@ router = APIRouter(tags=["Resolution"])
 
 @router.post(
     "/resolve",
-    response_model=EntityMentionResolutionResult,
     responses={
         200: {"description": "Canonical resolution"},
         202: {"description": "Provisional resolution"},
@@ -39,7 +38,6 @@ async def resolve(
 
 @router.post(
     "/resolve-bulk",
-    response_model=BulkResolveResponse,
     responses={
         400: {"model": ErrorResponse, "description": "Validation error"},
     },
