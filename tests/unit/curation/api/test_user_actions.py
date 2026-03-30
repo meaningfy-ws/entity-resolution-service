@@ -61,6 +61,27 @@ class TestListUserActions:
         cursor_params = user_action_service.list_user_actions.call_args.args[0]
         assert cursor_params.limit == 5
 
+    async def test_passes_filters_when_query_params_provided(
+        self,
+        client: AsyncClient,
+        user_action_service: AsyncMock,
+    ) -> None:
+        user_action_service.list_user_actions.return_value = CursorPage(
+            results=[], next_cursor=None
+        )
+
+        response = await client.get(
+            USER_ACTIONS_URL,
+            params={"actor": "curator@test.com", "ordering": "created_at"},
+        )
+
+        assert response.status_code == 200
+        user_action_service.list_user_actions.assert_called_once()
+        filters = user_action_service.list_user_actions.call_args.args[1]
+        assert filters is not None
+        assert filters.actor == "curator@test.com"
+        assert filters.ordering is not None
+
     async def test_non_admin_gets_403(
         self,
         app: FastAPI,
