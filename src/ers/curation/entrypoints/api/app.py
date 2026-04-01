@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
+from pymongo.asynchronous.database import AsyncDatabase
 
 from ers import config
 from ers.commons.adapters.mongo_client import MongoClientManager
@@ -34,14 +35,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await manager.close()
 
 
-async def _seed_admin_user(db: object) -> None:
+async def _seed_admin_user(db: AsyncDatabase) -> None:
     """Create the default admin user if it does not exist."""
     import uuid
     from datetime import datetime
 
     from ers.users.domain.users import User
 
-    repo = MongoUserRepository(db)  # type: ignore[arg-type]
+    repo = MongoUserRepository(db)
     existing = await repo.find_by_email(config.ADMIN_EMAIL)
     if existing is not None:
         return
@@ -80,7 +81,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(v1_router, prefix=config.API_V1_PREFIX)
 
-    app.openapi = lambda: _custom_openapi(app)  # type: ignore[method-assign]
+    app.openapi = lambda: _custom_openapi(app)
 
     return app
 

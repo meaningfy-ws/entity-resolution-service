@@ -1,5 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable
 
 import redis.asyncio as aioredis
 from erspec.models.ere import ERERequest, EREResponse
@@ -38,6 +39,8 @@ class RedisConnectionConfig:
 
 class AbstractClient(ABC):
     """Abstraction of a client to access with an ERS instance."""
+
+    request_channel_id: str
 
     @abstractmethod
     async def push_request(self, request: ERERequest) -> int:
@@ -158,7 +161,8 @@ class RedisEREClient(AbstractClient):
         )
         try:
             msg_json_str = request.model_dump_json()
-            count: int = await self._redis_client.lpush(self.request_channel_id, msg_json_str)  # type: ignore[misc]
+            lpush_result = self._redis_client.lpush(self.request_channel_id, msg_json_str)
+            count = await lpush_result if isinstance(lpush_result, Awaitable) else lpush_result
         except _RedisLibConnectionError as exc:
             raise ConnectionError(str(exc)) from exc
         log.debug("Redis ERE client, request id: %s sent", request.ere_request_id)
@@ -181,7 +185,8 @@ class RedisEREClient(AbstractClient):
             self.response_channel_id,
         )
         try:
-            result = await self._redis_client.brpop(self.response_channel_id, timeout=self.timeout)  # type: ignore[misc]
+            brpop_result = self._redis_client.brpop(self.response_channel_id, timeout=self.timeout)
+            result = await brpop_result if isinstance(brpop_result, Awaitable) else brpop_result
         except _RedisLibConnectionError as ex:
             log.error("Redis ERE client, pull_response() failed due to connection issue: %s", ex)
             raise ConnectionError(str(ex)) from ex
@@ -201,7 +206,8 @@ class RedisEREClient(AbstractClient):
             True if the server responded to PING, False on any error.
         """
         try:
-            result = await self._redis_client.ping()  # type: ignore[misc]
+            ping_result = self._redis_client.ping()
+            result = await ping_result if isinstance(ping_result, Awaitable) else ping_result
             return bool(result)
         except Exception:
             return False

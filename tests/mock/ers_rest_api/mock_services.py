@@ -4,6 +4,8 @@ Temporary stand-ins while real service implementations are pending.
 Wire via FastAPI dependency_overrides in the app factory.
 """
 
+from typing import cast
+
 from ers.commons.domain.data_transfer_objects import ResolutionOutcome
 from ers.ers_rest_api.domain.lookup import (
     BulkLookupRequest,
@@ -63,11 +65,14 @@ class MockLookupService:
         request_id: str,
         entity_type: str,
     ) -> LookupResponse:
-        return LookupResponseFactory.build(  # type: ignore[no-any-return]
-            identified_by=EntityMentionIdentifierFactory.build(
-                source_id=source_id,
-                request_id=request_id,
-                entity_type=entity_type,
+        return cast(
+            LookupResponse,
+            LookupResponseFactory.build(
+                identified_by=EntityMentionIdentifierFactory.build(
+                    source_id=source_id,
+                    request_id=request_id,
+                    entity_type=entity_type,
+                ),
             ),
         )
 
@@ -89,4 +94,4 @@ class MockRefreshBulkService:
         self,
         request: RefreshBulkRequest,
     ) -> RefreshBulkResponse:
-        return RefreshBulkResponseFactory.build()  # type: ignore[no-any-return]
+        return RefreshBulkResponseFactory.build()

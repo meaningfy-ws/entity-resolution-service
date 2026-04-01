@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import Depends, Request
 from pymongo.asynchronous.database import AsyncDatabase
@@ -28,7 +28,7 @@ from ers.users.services.token_service import JWTTokenService, TokenService
 
 
 def _get_database(request: Request) -> AsyncDatabase:
-    return request.app.state.mongo_db  # type: ignore[no-any-return]
+    return cast(AsyncDatabase, request.app.state.mongo_db)
 
 
 # Infrastructure providers

@@ -18,7 +18,7 @@ from ers.ers_rest_api.domain.resolution import (
 from tests.unit.factories import ClusterReferenceFactory, EntityMentionIdentifierFactory
 
 
-class EntityMentionResolutionResultFactory(ModelFactory):
+class EntityMentionResolutionResultFactory(ModelFactory[EntityMentionResolutionResult]):
     __model__ = EntityMentionResolutionResult
 
     @classmethod
@@ -40,7 +40,7 @@ class EntityMentionResolutionResultFactory(ModelFactory):
         return None
 
 
-class BulkResolveResponseFactory(ModelFactory):
+class BulkResolveResponseFactory(ModelFactory[BulkResolveResponse]):
     __model__ = BulkResolveResponse
 
     @classmethod
@@ -48,7 +48,7 @@ class BulkResolveResponseFactory(ModelFactory):
         return EntityMentionResolutionResultFactory.batch(cls.__faker__.random_int(min=2, max=5))
 
 
-class LookupResponseFactory(ModelFactory):
+class LookupResponseFactory(ModelFactory[LookupResponse]):
     __model__ = LookupResponse
 
     @classmethod
@@ -64,7 +64,7 @@ class LookupResponseFactory(ModelFactory):
         return cls.__faker__.date_time_between(start_date="-30d", end_date="now", tzinfo=UTC)
 
 
-class BulkLookupResultFactory(ModelFactory):
+class BulkLookupResultFactory(ModelFactory[BulkLookupResult]):
     __model__ = BulkLookupResult
 
     @classmethod
@@ -84,7 +84,7 @@ class BulkLookupResultFactory(ModelFactory):
         return None
 
 
-class BulkLookupResponseFactory(ModelFactory):
+class BulkLookupResponseFactory(ModelFactory[BulkLookupResponse]):
     __model__ = BulkLookupResponse
 
     @classmethod
@@ -92,7 +92,7 @@ class BulkLookupResponseFactory(ModelFactory):
         return BulkLookupResultFactory.batch(cls.__faker__.random_int(min=2, max=5))
 
 
-class RefreshBulkResponseFactory(ModelFactory):
+class RefreshBulkResponseFactory(ModelFactory[RefreshBulkResponse]):
     __model__ = RefreshBulkResponse
 
     @classmethod

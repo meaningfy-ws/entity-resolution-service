@@ -66,7 +66,9 @@ class EREPublishService:
             raise RedisConnectionError(str(exc)) from exc
 
         if count == 0:
-            raise ChannelUnavailableError("Channel accepted zero requests")
+            raise ChannelUnavailableError(
+                f"Channel '{self._adapter.request_channel_id}' accepted zero requests"
+            )
 
         log.info(
             "ERE request published: source_id=%s request_id=%s entity_type=%s ere_request_id=%s",
