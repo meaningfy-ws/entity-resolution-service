@@ -158,7 +158,7 @@ class RedisEREClient(AbstractClient):
         )
         try:
             msg_json_str = request.model_dump_json()
-            count = await self._redis_client.lpush(self.request_channel_id, msg_json_str)
+            count: int = await self._redis_client.lpush(self.request_channel_id, msg_json_str)  # type: ignore[misc]
         except _RedisLibConnectionError as exc:
             raise ConnectionError(str(exc)) from exc
         log.debug("Redis ERE client, request id: %s sent", request.ere_request_id)
@@ -181,7 +181,7 @@ class RedisEREClient(AbstractClient):
             self.response_channel_id,
         )
         try:
-            result = await self._redis_client.brpop(self.response_channel_id, timeout=self.timeout)
+            result = await self._redis_client.brpop(self.response_channel_id, timeout=self.timeout)  # type: ignore[misc]
         except _RedisLibConnectionError as ex:
             log.error("Redis ERE client, pull_response() failed due to connection issue: %s", ex)
             raise ConnectionError(str(ex)) from ex
@@ -201,7 +201,7 @@ class RedisEREClient(AbstractClient):
             True if the server responded to PING, False on any error.
         """
         try:
-            result = await self._redis_client.ping()
+            result = await self._redis_client.ping()  # type: ignore[misc]
             return bool(result)
         except Exception:
             return False

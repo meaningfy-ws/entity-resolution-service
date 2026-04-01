@@ -25,7 +25,7 @@ from ers.resolution_decision_store.services.resolution_decision_store_service im
 
 
 def _get_database(request: Request) -> AsyncDatabase:
-    return request.app.state.mongo_db
+    return request.app.state.mongo_db  # type: ignore[no-any-return]
 
 
 # Repository providers

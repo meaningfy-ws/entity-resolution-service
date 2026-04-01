@@ -63,7 +63,7 @@ class MockLookupService:
         request_id: str,
         entity_type: str,
     ) -> LookupResponse:
-        return LookupResponseFactory.build(
+        return LookupResponseFactory.build(  # type: ignore[no-any-return]
             identified_by=EntityMentionIdentifierFactory.build(
                 source_id=source_id,
                 request_id=request_id,
@@ -89,4 +89,4 @@ class MockRefreshBulkService:
         self,
         request: RefreshBulkRequest,
     ) -> RefreshBulkResponse:
-        return RefreshBulkResponseFactory.build()
+        return RefreshBulkResponseFactory.build()  # type: ignore[no-any-return]

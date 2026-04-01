@@ -123,11 +123,14 @@ class MongoDecisionRepository(
 
     def _extract_sort_value(self, decision: Decision, sort_field: str) -> float | datetime | None:
         if sort_field == _FIELD_CONFIDENCE:
-            return decision.current_placement.confidence_score
+            score: float | None = decision.current_placement.confidence_score
+            return score
         if sort_field == _FIELD_CREATED_AT:
-            return decision.created_at
+            created: datetime | None = decision.created_at
+            return created
         if sort_field == _FIELD_UPDATED_AT:
-            return decision.updated_at
+            updated: datetime | None = decision.updated_at
+            return updated
         return None
 
     async def upsert_decision(

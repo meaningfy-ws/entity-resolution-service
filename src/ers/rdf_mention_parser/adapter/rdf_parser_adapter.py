@@ -59,10 +59,13 @@ class RDFParserAdapter:
             Empty list when the query matches nothing.
         """
         results = graph.query(query)
-        rows = []
+        rows: list[dict[str, str | None]] = []
+        if results.vars is None:
+            return rows
         for row in results:
             row_dict = {
-                str(var): (str(row[var]) if row[var] is not None else None) for var in results.vars
+                str(var): (str(row[var]) if row[var] is not None else None)  # type: ignore[index, call-overload]
+                for var in results.vars
             }
             rows.append(row_dict)
         return rows

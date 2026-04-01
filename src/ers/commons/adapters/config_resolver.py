@@ -76,13 +76,11 @@ def env_property(
     """
 
     def decorator(func):
-        @property
         def wrapper(self):
             resolver = config_resolver_class()
             config_value = resolver.concrete_config_resolve(func.__name__, default_value)
             return func(self, config_value)
 
-        wrapper.__doc__ = func.__doc__
-        return wrapper
+        return property(wrapper, doc=func.__doc__)
 
     return decorator

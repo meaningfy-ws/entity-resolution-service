@@ -28,7 +28,7 @@ from ers.users.services.token_service import JWTTokenService, TokenService
 
 
 def _get_database(request: Request) -> AsyncDatabase:
-    return request.app.state.mongo_db
+    return request.app.state.mongo_db  # type: ignore[no-any-return]
 
 
 # Infrastructure providers

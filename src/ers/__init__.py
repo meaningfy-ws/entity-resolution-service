@@ -22,7 +22,7 @@ class CurationAppConfig:
 
     @env_property(default_value='["*"]')
     def CORS_ORIGINS(self, config_value: str) -> list[str]:
-        return json.loads(config_value)
+        return list(json.loads(config_value))
 
 
 class JWTConfig:

@@ -63,7 +63,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(v1_router, prefix=config.ERS_API_PREFIX)
 
-    app.openapi = lambda: _custom_openapi(app)  # type: ignore[assignment]
+    app.openapi = lambda: _custom_openapi(app)  # type: ignore[method-assign]
 
     # --- Temporary mock overrides (remove when real services are implemented) ---
     if config.USE_MOCK_SERVICES:

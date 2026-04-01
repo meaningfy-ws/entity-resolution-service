@@ -146,7 +146,7 @@ async def bulk_accept_decisions(
     service: Annotated[DecisionCurationService, Depends(get_decision_curation_service)],
 ) -> BulkActionResponse:
     """Accept multiple decisions in a single request."""
-    return await service.bulk_accept_decisions(body.decision_ids, actor=user.email)
+    return await service.bulk_accept_decisions(list(body.decision_ids), actor=user.email)
 
 
 @router.post(
@@ -160,4 +160,4 @@ async def bulk_reject_decisions(
     service: Annotated[DecisionCurationService, Depends(get_decision_curation_service)],
 ) -> BulkActionResponse:
     """Reject multiple decisions in a single request."""
-    return await service.bulk_reject_decisions(body.decision_ids, actor=user.email)
+    return await service.bulk_reject_decisions(list(body.decision_ids), actor=user.email)

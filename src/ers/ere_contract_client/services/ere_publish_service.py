@@ -66,9 +66,7 @@ class EREPublishService:
             raise RedisConnectionError(str(exc)) from exc
 
         if count == 0:
-            raise ChannelUnavailableError(
-                f"Channel '{self._adapter.request_channel_id}' accepted zero requests"
-            )
+            raise ChannelUnavailableError("Channel accepted zero requests")
 
         log.info(
             "ERE request published: source_id=%s request_id=%s entity_type=%s ere_request_id=%s",
@@ -77,7 +75,7 @@ class EREPublishService:
             request.entity_mention.identifiedBy.entity_type,
             request.ere_request_id,
         )
-        return request.ere_request_id
+        return str(request.ere_request_id)
 
     def _validate_triad(self, request: EntityMentionResolutionRequest) -> None:
         """Raise InvalidRequestError if the correlation triad is incomplete.
