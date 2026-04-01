@@ -1,7 +1,5 @@
 """Unit tests for SHA256ContentHasher."""
 
-import pytest
-
 from ers.commons.adapters.hasher import SHA256ContentHasher
 
 
@@ -12,7 +10,7 @@ class TestSHA256ContentHasher:
         """SHA-256 of the empty string is a well-known constant."""
         hasher = SHA256ContentHasher()
         result = hasher.hash("")
-        assert result == "e3b0c44298fc1c149afbf4c8996fb924" "27ae41e4649b934ca495991b7852b855"
+        assert result == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
     def test_hash_returns_hex_string_of_64_chars(self) -> None:
         hasher = SHA256ContentHasher()

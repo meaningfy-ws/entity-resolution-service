@@ -1,6 +1,7 @@
 """Step definitions for: retrieve_decision.feature"""
+
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -39,9 +40,7 @@ def make_identifier(source_id="s1", request_id="r1", entity_type="Person"):
 
 
 def make_cluster(cluster_id="c1"):
-    return ClusterReference(
-        cluster_id=cluster_id, confidence_score=0.9, similarity_score=0.85
-    )
+    return ClusterReference(cluster_id=cluster_id, confidence_score=0.9, similarity_score=0.85)
 
 
 def make_decision(now, cluster_id="c1"):
@@ -63,7 +62,7 @@ def make_decision(now, cluster_id="c1"):
 @given("a stored decision for a known triad")
 def step_stored_decision(ctx, mock_repo):
     ctx["identifier"] = make_identifier()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ctx["stored_decision"] = make_decision(now)
     mock_repo.find_by_triad = AsyncMock(return_value=ctx["stored_decision"])
 
@@ -82,9 +81,7 @@ def step_empty_store(ctx, mock_repo):
 @when("I look up the decision by that triad")
 def step_lookup_by_triad(ctx, service):
     try:
-        ctx["result"] = asyncio.run(
-            get_decision_by_triad(ctx["identifier"], service=service)
-        )
+        ctx["result"] = asyncio.run(get_decision_by_triad(ctx["identifier"], service=service))
         ctx["raised_exception"] = None
     except Exception as exc:
         ctx["result"] = None
@@ -94,9 +91,7 @@ def step_lookup_by_triad(ctx, service):
 @when("I look up a decision by an unknown triad")
 def step_lookup_unknown_triad(ctx, service):
     try:
-        ctx["result"] = asyncio.run(
-            get_decision_by_triad(ctx["identifier"], service=service)
-        )
+        ctx["result"] = asyncio.run(get_decision_by_triad(ctx["identifier"], service=service))
         ctx["raised_exception"] = None
     except Exception as exc:
         ctx["result"] = None

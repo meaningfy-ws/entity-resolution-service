@@ -1,6 +1,7 @@
 """Step definitions for: store_decision.feature"""
+
 import asyncio
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -51,9 +52,7 @@ def make_identifier(source_id="s1", request_id="r1", entity_type="Person"):
 
 
 def make_cluster(cluster_id="c1"):
-    return ClusterReference(
-        cluster_id=cluster_id, confidence_score=0.9, similarity_score=0.85
-    )
+    return ClusterReference(cluster_id=cluster_id, confidence_score=0.9, similarity_score=0.85)
 
 
 def make_decision(now, cluster_id="c1", candidates=None):
@@ -77,13 +76,13 @@ def step_valid_identifier_and_cluster(ctx):
     ctx["identifier"] = make_identifier()
     ctx["cluster"] = make_cluster()
     ctx["candidates"] = []
-    ctx["updated_at"] = datetime.now(timezone.utc)
+    ctx["updated_at"] = datetime.now(UTC)
 
 
 @given("an existing decision for a triad")
 def step_existing_decision(ctx, mock_repo):
     ctx["identifier"] = make_identifier()
-    ctx["now"] = datetime.now(timezone.utc)
+    ctx["now"] = datetime.now(UTC)
     ctx["cluster"] = make_cluster("c1")
     decision = make_decision(ctx["now"], cluster_id="c1")
     mock_repo.upsert_decision = AsyncMock(return_value=decision)
@@ -100,7 +99,7 @@ def step_identifier_with_many_candidates(ctx):
     ctx["identifier"] = make_identifier()
     ctx["cluster"] = make_cluster()
     ctx["candidates"] = [make_cluster(f"c{i}") for i in range(10)]
-    ctx["updated_at"] = datetime.now(timezone.utc)
+    ctx["updated_at"] = datetime.now(UTC)
 
 
 # ---------------------------------------------------------------------------
@@ -131,9 +130,7 @@ def step_store_newer_timestamp(ctx, service, mock_repo):
     mock_repo.upsert_decision = AsyncMock(return_value=newer_decision)
     try:
         ctx["result"] = asyncio.run(
-            store_decision(
-                ctx["identifier"], make_cluster("c2"), [], newer_ts, service=service
-            )
+            store_decision(ctx["identifier"], make_cluster("c2"), [], newer_ts, service=service)
         )
         ctx["raised_exception"] = None
     except Exception as exc:
@@ -146,15 +143,15 @@ def step_attempt_store_stale(ctx, service, mock_repo, attempt_ts):
     attempt = datetime.fromisoformat(attempt_ts.replace("Z", "+00:00"))
     mock_repo.upsert_decision = AsyncMock(
         side_effect=StaleOutcomeError(
-            "s1", "r1", "Person",
+            "s1",
+            "r1",
+            "Person",
             stored_at=str(ctx["stored_ts"]),
             attempted_at=str(attempt),
         )
     )
     try:
-        asyncio.run(
-            store_decision(ctx["identifier"], make_cluster(), [], attempt, service=service)
-        )
+        asyncio.run(store_decision(ctx["identifier"], make_cluster(), [], attempt, service=service))
         ctx["raised_exception"] = None
     except StaleOutcomeError as exc:
         ctx["raised_exception"] = exc

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from erspec.models.core import EntityMention, LookupState, EntityMentionIdentifier
+from erspec.models.core import EntityMention, EntityMentionIdentifier, LookupState
 from pydantic import Field, field_validator, model_validator
 
 from ers.commons.domain.data_transfer_objects import FrozenDTO
@@ -23,6 +23,7 @@ class LookupRequestRecord(FrozenDTO, LookupState):
     Advanced only after a bulk refresh response is successfully produced
     (not on request receipt). Regression is rejected by the service layer.
     """
+
     updated_at: datetime = Field(
         ...,
         description="Wall-clock UTC time of the last state record update. Must be timezone-aware.",
@@ -48,6 +49,7 @@ class ResolutionRequestRecord(FrozenDTO, EntityMention):
     Created once on first submission. Never mutated after storage.
     content_hash enables idempotency conflict detection.
     """
+
     content_hash: str = Field(
         ...,
         pattern=r"^[0-9a-f]{64}$",

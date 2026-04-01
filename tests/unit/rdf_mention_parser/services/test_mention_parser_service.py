@@ -51,7 +51,9 @@ _ORG_FIELDS = {
 _ORG_URI = "http://www.w3.org/ns/org#Organization"
 
 
-def _make_entity_mention(content: str, content_type: str = "text/turtle", entity_type: str = _ORG_URI) -> EntityMention:
+def _make_entity_mention(
+    content: str, content_type: str = "text/turtle", entity_type: str = _ORG_URI
+) -> EntityMention:
     return EntityMention(
         identifiedBy=EntityMentionIdentifier(
             source_id="test-source",
@@ -216,12 +218,24 @@ class TestEntityTypeMismatch:
 class TestMultipleEntitiesFound:
     def test_raises_when_multiple_distinct_entities_found(self, service, adapter_mock):
         adapter_mock.execute_sparql.return_value = [
-            {"entity": "http://example.org/org/1", "legal_name": "Org A",
-             "country_code": "DEU", "nuts_code": None, "post_code": None,
-             "post_name": None, "thoroughfare": None},
-            {"entity": "http://example.org/org/2", "legal_name": "Org B",
-             "country_code": "FRA", "nuts_code": None, "post_code": None,
-             "post_name": None, "thoroughfare": None},
+            {
+                "entity": "http://example.org/org/1",
+                "legal_name": "Org A",
+                "country_code": "DEU",
+                "nuts_code": None,
+                "post_code": None,
+                "post_name": None,
+                "thoroughfare": None,
+            },
+            {
+                "entity": "http://example.org/org/2",
+                "legal_name": "Org B",
+                "country_code": "FRA",
+                "nuts_code": None,
+                "post_code": None,
+                "post_name": None,
+                "thoroughfare": None,
+            },
         ]
 
         with pytest.raises(MultipleEntitiesFoundError) as exc_info:
@@ -234,12 +248,24 @@ class TestMultipleEntitiesFound:
         The service should merge them (first non-None wins) instead of raising.
         """
         adapter_mock.execute_sparql.return_value = [
-            {"entity": "http://example.org/org/1", "legal_name": "Test Org",
-             "country_code": "DEU", "nuts_code": None, "post_code": "10115",
-             "post_name": None, "thoroughfare": None},
-            {"entity": "http://example.org/org/1", "legal_name": "Test Org",
-             "country_code": None, "nuts_code": "DE1", "post_code": None,
-             "post_name": "Berlin", "thoroughfare": None},
+            {
+                "entity": "http://example.org/org/1",
+                "legal_name": "Test Org",
+                "country_code": "DEU",
+                "nuts_code": None,
+                "post_code": "10115",
+                "post_name": None,
+                "thoroughfare": None,
+            },
+            {
+                "entity": "http://example.org/org/1",
+                "legal_name": "Test Org",
+                "country_code": None,
+                "nuts_code": "DE1",
+                "post_code": None,
+                "post_name": "Berlin",
+                "thoroughfare": None,
+            },
         ]
 
         result = service.parse(_make_entity_mention("turtle content"))
@@ -306,7 +332,9 @@ class TestErrorPropagation:
 
     def test_raises_unsupported_entity_type_for_unknown_uri(self, service):
         with pytest.raises(UnsupportedEntityTypeError):
-            service.parse(_make_entity_mention("content", entity_type="http://example.org/Unknown#Type"))
+            service.parse(
+                _make_entity_mention("content", entity_type="http://example.org/Unknown#Type")
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -327,10 +355,13 @@ class TestLoadConfig:
         assert result is config
 
     def test_propagates_file_not_found(self):
-        with patch(
-            f"{_SERVICE_MODULE}.RDFConfigReader.from_file",
-            side_effect=FileNotFoundError("missing"),
-        ), pytest.raises(FileNotFoundError):
+        with (
+            patch(
+                f"{_SERVICE_MODULE}.RDFConfigReader.from_file",
+                side_effect=FileNotFoundError("missing"),
+            ),
+            pytest.raises(FileNotFoundError),
+        ):
             load_config()
 
 

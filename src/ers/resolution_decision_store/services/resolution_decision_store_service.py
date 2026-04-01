@@ -29,7 +29,6 @@ class ResolutionDecisionStoreServiceABC(ABC):
         # src/ers/resolution_decision_store/services/decision_store_service.py
         # Needs to be removed from here and references need to be updated to use that function instead.
 
-
     @abstractmethod
     async def get_delta_for_source(
         self,

@@ -1,4 +1,5 @@
 """Domain error hierarchy for the Resolution Decision Store."""
+
 from ers.commons.services.exceptions import ApplicationError
 
 

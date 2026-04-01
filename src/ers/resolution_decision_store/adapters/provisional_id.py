@@ -5,6 +5,7 @@ three identifying fields. It serves dual purpose:
 - As ``Decision.id`` (set via ``$setOnInsert`` on first write — never changes)
 - As the provisional ``cluster_id`` when ERE does not respond in time
 """
+
 from erspec.models.core import EntityMentionIdentifier
 
 from ers.commons.adapters.hasher import SHA256ContentHasher

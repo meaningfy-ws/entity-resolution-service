@@ -1,4 +1,5 @@
 """Decision Store service — orchestrates decision persistence and cursor-paginated queries."""
+
 import logging
 from datetime import datetime
 
@@ -54,9 +55,7 @@ class DecisionStoreService:
             updated_at=updated_at,
         )
 
-    async def get_decision_by_triad(
-        self, identifier: EntityMentionIdentifier
-    ) -> Decision | None:
+    async def get_decision_by_triad(self, identifier: EntityMentionIdentifier) -> Decision | None:
         """Return the current decision for a triad, or None if not stored.
 
         Args:

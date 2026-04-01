@@ -248,9 +248,7 @@ def resubmit_with_different_content(ctx, new_content):
     ctx["new_content"] = new_content
 
     try:
-        ctx["result"] = asyncio.run(
-            ctx["service"].register_resolution_request(conflicting_mention)
-        )
+        ctx["result"] = asyncio.run(ctx["service"].register_resolution_request(conflicting_mention))
         ctx["raised_exception"] = None
     except Exception as exc:
         ctx["result"] = None
@@ -328,7 +326,9 @@ def returned_record_has_same_received_at(ctx):
 @then("an IdempotencyConflictError is raised")
 def idempotency_conflict_error_is_raised(ctx):
     """Assert that the service raised IdempotencyConflictError."""
-    assert ctx["raised_exception"] is not None, "Expected IdempotencyConflictError but no exception was raised"
+    assert ctx["raised_exception"] is not None, (
+        "Expected IdempotencyConflictError but no exception was raised"
+    )
     assert isinstance(ctx["raised_exception"], IdempotencyConflictError), (
         f"Expected IdempotencyConflictError, got {type(ctx['raised_exception'])}"
     )

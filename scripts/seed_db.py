@@ -18,13 +18,13 @@ from erspec.models.core import UserActionType
 from pymongo import AsyncMongoClient
 
 from ers import config
-from ers.resolution_decision_store.adapters.decision_repository import MongoDecisionRepository
 from ers.curation.adapters.user_action_repository import (
     MongoUserActionCurationRepository,
 )
 from ers.request_registry.adapters.records_repository import (
     MongoResolutionRequestRepository,
 )
+from ers.resolution_decision_store.adapters.decision_repository import MongoDecisionRepository
 
 # only used for seeding/testing
 from tests.unit.factories import (
@@ -170,7 +170,6 @@ async def seed(
     client = AsyncMongoClient(config.MONGO_URI)
     db = client[config.MONGO_DATABASE_NAME]
     await _drop_seed_collections(db)
-
 
     mention_repo = MongoResolutionRequestRepository(db)
     decision_repo = MongoDecisionRepository(db)

@@ -1,11 +1,11 @@
+from ers.commons.services.exceptions import ApplicationError
 from ers.resolution_decision_store.domain.errors import (
-    DecisionStoreError,
-    StaleOutcomeError,
     DecisionNotFoundError,
+    DecisionStoreError,
     RepositoryConnectionError,
     RepositoryOperationError,
+    StaleOutcomeError,
 )
-from ers.commons.services.exceptions import ApplicationError
 
 
 def test_all_errors_inherit_from_base():
@@ -23,15 +23,11 @@ def test_base_inherits_application_error():
 
 
 def test_stale_outcome_error_carries_detail():
-    err = StaleOutcomeError(
-        "s1", "r1", "Person", stored_at="2025-01-01", attempted_at="2024-12-31"
-    )
+    err = StaleOutcomeError("s1", "r1", "Person", stored_at="2025-01-01", attempted_at="2024-12-31")
     assert "s1" in str(err)
 
 
 def test_stale_outcome_error_includes_both_timestamps():
-    err = StaleOutcomeError(
-        "src", "req", "Org", stored_at="2025-06-01", attempted_at="2025-05-31"
-    )
+    err = StaleOutcomeError("src", "req", "Org", stored_at="2025-06-01", attempted_at="2025-05-31")
     assert "2025-06-01" in str(err)
     assert "2025-05-31" in str(err)

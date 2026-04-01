@@ -13,7 +13,7 @@ Feature: Snapshot State Management
 """
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import create_autospec
 
@@ -153,9 +153,7 @@ def current_lookup_state(ctx, source_id, existing_last_snapshot):
         ctx["lookup_repo"].get.return_value = existing_state
 
 
-@given(
-    parsers.parse('the snapshot for "{source_id}" has been advanced to "{snapshot_time}"')
-)
+@given(parsers.parse('the snapshot for "{source_id}" has been advanced to "{snapshot_time}"'))
 def snapshot_already_advanced(ctx, source_id, snapshot_time):
     """Pre-configure the repository to return a LookupRequestRecord with last_snapshot set."""
     ts = datetime.fromisoformat(snapshot_time)
@@ -187,9 +185,7 @@ def advance_snapshot(ctx, snapshot_time):
     ctx["lookup_repo"].upsert.side_effect = lambda s: s
 
     try:
-        ctx["result"] = asyncio.run(
-            ctx["service"].advance_snapshot(ctx["source_id"], ts)
-        )
+        ctx["result"] = asyncio.run(ctx["service"].advance_snapshot(ctx["source_id"], ts))
         ctx["raised_exception"] = None
     except SnapshotRegressionError as exc:
         ctx["result"] = None
@@ -262,6 +258,4 @@ def lookup_state_returned_with_last_snapshot(ctx, last_snapshot):
 @then("no lookup state is returned")
 def no_lookup_state_returned(ctx):
     """Assert that get_lookup_state returned None for an unknown source_id."""
-    assert ctx["result"] is None, (
-        f"Expected None but got {ctx['result']}"
-    )
+    assert ctx["result"] is None, f"Expected None but got {ctx['result']}"

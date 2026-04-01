@@ -23,10 +23,10 @@ from ers.commons.adapters.tracing import (
     trace_function,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
+
 
 def _reset_otel_globals() -> None:
     """Reset OTel global tracer provider state for test isolation.
@@ -66,6 +66,7 @@ def _make_config(enabled: bool = False, service_name: str = "test-service") -> M
 # span() — context manager
 # ---------------------------------------------------------------------------
 
+
 def test_span_noop_does_not_raise():
     with span("test.operation"):
         pass
@@ -79,6 +80,7 @@ def test_span_with_attributes_does_not_raise():
 # ---------------------------------------------------------------------------
 # trace_function() — sync
 # ---------------------------------------------------------------------------
+
 
 def test_trace_function_sync_returns_correct_value():
     @trace_function(span_name="test.sync")
@@ -99,6 +101,7 @@ def test_trace_function_preserves_function_name():
 
 def test_trace_function_no_parens():
     """@trace_function without parentheses must work identically to @trace_function()."""
+
     @trace_function
     def standalone():
         return "ok"
@@ -142,6 +145,7 @@ def test_trace_function_sync_exception_propagates():
 # trace_function() — async
 # ---------------------------------------------------------------------------
 
+
 def test_trace_function_async_returns_correct_value():
     @trace_function(span_name="test.async")
     async def async_add(a, b):
@@ -172,6 +176,7 @@ def test_trace_function_async_preserves_name():
 # configure_tracing() — bootstrap
 # ---------------------------------------------------------------------------
 
+
 def test_import_does_not_activate_tracing():
     """_provider must be None at import time — no side effects on import."""
     assert tracing_module._provider is None
@@ -196,6 +201,7 @@ def test_configure_tracing_enabled_registers_global_provider():
 # add_span_processor()
 # ---------------------------------------------------------------------------
 
+
 def test_add_span_processor_noop_when_not_configured():
     mock_processor = MagicMock()
     add_span_processor(mock_processor)  # Must not raise
@@ -212,6 +218,7 @@ def test_add_span_processor_registers_when_configured():
 # ---------------------------------------------------------------------------
 # Extractor registry
 # ---------------------------------------------------------------------------
+
 
 class _SampleDomain:
     def __init__(self, value: str):
@@ -243,14 +250,13 @@ def test_unregistered_type_silently_ignored():
 def test_later_registration_overwrites_earlier():
     register_span_extractor(_SampleDomain, lambda o: {"key": "first"})
     register_span_extractor(_SampleDomain, lambda o: {"key": "second"})
-    assert tracing_module._extractors[_SampleDomain](
-        _SampleDomain("x")
-    ) == {"key": "second"}
+    assert tracing_module._extractors[_SampleDomain](_SampleDomain("x")) == {"key": "second"}
 
 
 # ---------------------------------------------------------------------------
 # Correlation context
 # ---------------------------------------------------------------------------
+
 
 def test_set_and_get_request_id():
     rid = set_request_id("req-123")

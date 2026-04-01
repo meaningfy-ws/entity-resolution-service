@@ -4,12 +4,12 @@ Uses testcontainers to spin up a Redis instance. Skips if Docker is unavailable.
 """
 
 import pytest
+from erspec.models.core import EntityMentionIdentifier
+from erspec.models.ere import EntityMention, EntityMentionResolutionRequest
 
 from ers import config
 from ers.commons.adapters.redis_client import RedisEREClient
 from ers.ere_contract_client.services.ere_publish_service import EREPublishService
-from erspec.models.core import EntityMentionIdentifier
-from erspec.models.ere import EntityMention, EntityMentionResolutionRequest
 
 
 @pytest.fixture
@@ -42,9 +42,7 @@ def sample_request() -> EntityMentionResolutionRequest:
 
 
 class TestPublishServiceRoundTrip:
-    async def test_publish_puts_request_in_redis_list(
-        self, service, redis_client, sample_request
-    ):
+    async def test_publish_puts_request_in_redis_list(self, service, redis_client, sample_request):
         """After publish_request, the serialized request appears in the ere_requests list."""
         ere_request_id = await service.publish_request(sample_request)
 
@@ -71,9 +69,7 @@ class TestPublishServiceRoundTrip:
         assert deserialized.ere_request_id == ere_request_id
         assert len(ere_request_id) > 0
 
-    async def test_publish_auto_sets_timestamp(
-        self, service, redis_client, sample_request
-    ):
+    async def test_publish_auto_sets_timestamp(self, service, redis_client, sample_request):
         """Auto-populated timestamp is present in published request bytes."""
         await service.publish_request(sample_request)
 

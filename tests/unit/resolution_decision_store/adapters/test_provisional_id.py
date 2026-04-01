@@ -3,8 +3,12 @@ from erspec.models.core import EntityMentionIdentifier
 from ers.resolution_decision_store.adapters.provisional_id import derive_provisional_cluster_id
 
 
-def make_identifier(source_id="s1", request_id="r1", entity_type="Person") -> EntityMentionIdentifier:
-    return EntityMentionIdentifier(source_id=source_id, request_id=request_id, entity_type=entity_type)
+def make_identifier(
+    source_id="s1", request_id="r1", entity_type="Person"
+) -> EntityMentionIdentifier:
+    return EntityMentionIdentifier(
+        source_id=source_id, request_id=request_id, entity_type=entity_type
+    )
 
 
 def test_returns_64_char_hex_string():

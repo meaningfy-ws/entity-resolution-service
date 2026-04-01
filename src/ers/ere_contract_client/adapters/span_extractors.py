@@ -13,10 +13,14 @@ register_span_extractor(
     EntityMentionResolutionRequest,
     lambda r: {
         "ere.ere_request_id": r.ere_request_id or "",
-        **({
-            "ere.source_id":   r.entity_mention.identifiedBy.source_id,
-            "ere.request_id":  str(r.entity_mention.identifiedBy.request_id),
-            "ere.entity_type": str(r.entity_mention.identifiedBy.entity_type),
-        } if r.entity_mention else {}),
+        **(
+            {
+                "ere.source_id": r.entity_mention.identifiedBy.source_id,
+                "ere.request_id": str(r.entity_mention.identifiedBy.request_id),
+                "ere.entity_type": str(r.entity_mention.identifiedBy.entity_type),
+            }
+            if r.entity_mention
+            else {}
+        ),
     },
 )

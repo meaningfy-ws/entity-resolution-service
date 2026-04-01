@@ -1,6 +1,7 @@
 """Step definitions for: paginated_query.feature"""
+
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -8,9 +9,9 @@ from erspec.models.core import ClusterReference, Decision, EntityMentionIdentifi
 from pytest_bdd import given, scenario, then, when
 
 from ers import config
-from ers.commons.domain.exceptions import InvalidCursorError
 from ers.commons.domain.cursor import encode_cursor
 from ers.commons.domain.data_transfer_objects import CursorPage
+from ers.commons.domain.exceptions import InvalidCursorError
 from ers.resolution_decision_store.services.decision_store_service import query_decisions_paginated
 
 FEATURE_FILE = str(Path(__file__).parent / "paginated_query.feature")
@@ -58,9 +59,7 @@ def make_identifier(source_id="s1", request_id="r1", entity_type="Person"):
 
 
 def make_cluster(cluster_id="c1"):
-    return ClusterReference(
-        cluster_id=cluster_id, confidence_score=0.9, similarity_score=0.85
-    )
+    return ClusterReference(cluster_id=cluster_id, confidence_score=0.9, similarity_score=0.85)
 
 
 def make_decision(now, source_id="s1"):
@@ -75,11 +74,8 @@ def make_decision(now, source_id="s1"):
 
 
 def build_decisions(count=5):
-    base = datetime.now(timezone.utc)
-    return [
-        make_decision(base + timedelta(seconds=i), source_id=f"s{i}")
-        for i in range(count)
-    ]
+    base = datetime.now(UTC)
+    return [make_decision(base + timedelta(seconds=i), source_id=f"s{i}") for i in range(count)]
 
 
 # ---------------------------------------------------------------------------
@@ -95,9 +91,7 @@ def step_5_stored_decisions(ctx):
 @given("an empty decision store")
 def step_empty_store(ctx, mock_repo):
     ctx["decisions"] = []
-    mock_repo.find_with_filters = AsyncMock(
-        return_value=CursorPage(results=[], next_cursor=None)
-    )
+    mock_repo.find_with_filters = AsyncMock(return_value=CursorPage(results=[], next_cursor=None))
 
 
 @given("a valid decision store")
@@ -120,9 +114,7 @@ def step_query_page1(ctx, service, mock_repo):
         )
     )
     try:
-        ctx["page1"] = asyncio.run(
-            query_decisions_paginated(service=service, page_size=3)
-        )
+        ctx["page1"] = asyncio.run(query_decisions_paginated(service=service, page_size=3))
         ctx["raised_exception"] = None
     except Exception as exc:
         ctx["page1"] = None

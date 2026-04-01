@@ -6,7 +6,6 @@ from erspec.models.core import Decision, EntityMention
 
 from ers.commons.domain.data_transfer_objects import CursorPage, CursorParams
 from ers.commons.services.exceptions import NotFoundError
-from ers.resolution_decision_store.adapters.decision_repository import DecisionRepository
 from ers.curation.adapters.entity_mention_repository import (
     EntityMentionCurationRepository,
 )
@@ -20,6 +19,7 @@ from ers.curation.domain.data_transfer_objects import (
 )
 from ers.curation.domain.exceptions import AlreadyCuratedError
 from ers.curation.services.user_action_service import UserActionService
+from ers.resolution_decision_store.adapters.decision_repository import DecisionRepository
 
 
 class DecisionCurationService:

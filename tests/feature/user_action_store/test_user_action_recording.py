@@ -133,17 +133,21 @@ def curator_recommends_parametrized(
 
     if recommendation == "the top candidate placement":
         ctx["user_action"] = DomainUserActionFactory.create_accept(
-            actor=actor, decision=ctx["decision"],
+            actor=actor,
+            decision=ctx["decision"],
         )
     elif recommendation == "rejection of all candidates":
         ctx["user_action"] = DomainUserActionFactory.create_reject(
-            actor=actor, decision=ctx["decision"],
+            actor=actor,
+            decision=ctx["decision"],
         )
     elif recommendation == "placement in alternative cluster":
         # Pick the last candidate as the alternative for this parametrized case.
         alt_cluster_id = ctx["decision"].candidates[-1].cluster_id
         ctx["user_action"] = DomainUserActionFactory.create_assign(
-            actor=actor, decision=ctx["decision"], cluster_id=alt_cluster_id,
+            actor=actor,
+            decision=ctx["decision"],
+            cluster_id=alt_cluster_id,
         )
     else:
         msg = f"Unknown recommendation: {recommendation}"
@@ -244,7 +248,7 @@ def snapshot_includes_candidates_with_scores(ctx: dict[str, Any]) -> None:
     snapshot_candidates = ctx["user_action"].candidates
     decision_candidates = ctx["decision"].candidates
     assert len(snapshot_candidates) == len(decision_candidates)
-    for snap, orig in zip(snapshot_candidates, decision_candidates):
+    for snap, orig in zip(snapshot_candidates, decision_candidates, strict=True):
         assert snap.cluster_id == orig.cluster_id
         assert snap.confidence_score == orig.confidence_score
         assert snap.similarity_score == orig.similarity_score
@@ -258,16 +262,10 @@ def snapshot_includes_current_placement(ctx: dict[str, Any]) -> None:
     # the chosen cluster.  For reject all, selected_cluster is None but
     # the candidates snapshot still includes the current placement.
     if action.selected_cluster is not None:
-        assert any(
-            c.cluster_id == decision.current_placement.cluster_id
-            for c in action.candidates
-        )
+        assert any(c.cluster_id == decision.current_placement.cluster_id for c in action.candidates)
     else:
         # reject all — current placement still in snapshot candidates
-        assert any(
-            c.cluster_id == decision.current_placement.cluster_id
-            for c in action.candidates
-        )
+        assert any(c.cluster_id == decision.current_placement.cluster_id for c in action.candidates)
 
 
 @then("the selected cluster is empty")

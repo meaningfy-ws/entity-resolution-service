@@ -1,4 +1,3 @@
-
 from ers.commons.adapters.config_resolver import (
     DefaultConfigResolver,
     EnvConfigResolver,

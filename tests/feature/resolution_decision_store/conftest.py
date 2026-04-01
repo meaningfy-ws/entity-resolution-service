@@ -1,4 +1,5 @@
 """Shared fixtures for Resolution Decision Store BDD tests."""
+
 from unittest.mock import create_autospec
 
 import pytest

@@ -3,8 +3,10 @@ from typing import Annotated
 from fastapi import Depends, Request
 from pymongo.asynchronous.database import AsyncDatabase
 
-
-from ers.commons.adapters.decision_repository import BaseDecisionRepository, BaseMongoDecisionRepository
+from ers.commons.adapters.decision_repository import (
+    BaseDecisionRepository,
+    BaseMongoDecisionRepository,
+)
 from ers.ers_rest_api.services.lookup_service import LookupService
 from ers.ers_rest_api.services.refresh_bulk_service import RefreshBulkService
 from ers.ers_rest_api.services.resolve_service import ResolveService

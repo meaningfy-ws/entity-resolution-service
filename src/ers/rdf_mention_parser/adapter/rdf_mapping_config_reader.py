@@ -49,4 +49,3 @@ class RDFConfigReader:
         if not resolved.exists():
             raise FileNotFoundError(f"RDF config file not found: {resolved}")
         return RDFConfigReader.from_string(resolved.read_text(encoding="utf-8"))
-

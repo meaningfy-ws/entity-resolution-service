@@ -2,6 +2,7 @@
 
 Import this module at application startup only — NOT at module level in other packages.
 """
+
 from erspec.models.core import Decision
 
 from ers.commons.adapters.tracing import register_span_extractor

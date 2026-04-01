@@ -14,6 +14,8 @@ Feature: Validate Resolution Requests and Handle Transport Failures
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from erspec.models.core import EntityMentionIdentifier
+from erspec.models.ere import EntityMention, EntityMentionResolutionRequest
 from pytest_bdd import given, parsers, scenario, then, when
 
 from ers.ere_contract_client.domain.errors import (
@@ -23,8 +25,6 @@ from ers.ere_contract_client.domain.errors import (
     SerializationError,
 )
 from ers.ere_contract_client.services.ere_publish_service import EREPublishService
-from erspec.models.core import EntityMentionIdentifier
-from erspec.models.ere import EntityMention, EntityMentionResolutionRequest
 from tests.conftest import TESTS_ROOT_DIR
 from tests.feature.ere_contract_client.conftest import run_async
 
@@ -135,13 +135,9 @@ def messaging_channel_reachable(ctx):
 def transport_will_fail(ctx, failure_mode):
     """Configure the mock adapter to raise the appropriate failure."""
     if failure_mode == "connection refused":
-        ctx["adapter"].push_request = AsyncMock(
-            side_effect=ConnectionError("connection refused")
-        )
+        ctx["adapter"].push_request = AsyncMock(side_effect=ConnectionError("connection refused"))
     elif failure_mode == "response timeout":
-        ctx["adapter"].push_request = AsyncMock(
-            side_effect=TimeoutError("response timeout")
-        )
+        ctx["adapter"].push_request = AsyncMock(side_effect=TimeoutError("response timeout"))
     elif failure_mode == "serialization failure":
         # Flag that the request built in the when-step should be unserializable.
         ctx["use_unserializable_request"] = True

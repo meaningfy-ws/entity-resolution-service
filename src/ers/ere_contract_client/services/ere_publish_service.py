@@ -4,6 +4,8 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
+from erspec.models.ere import EntityMentionResolutionRequest
+
 from ers.commons.adapters.redis_client import AbstractClient
 from ers.commons.adapters.tracing import trace_function
 from ers.ere_contract_client.domain.errors import (
@@ -15,7 +17,6 @@ from ers.ere_contract_client.domain.errors import (
     RedisConnectionError,
     SerializationError,
 )
-from erspec.models.ere import EntityMentionResolutionRequest
 
 log = logging.getLogger(__name__)
 

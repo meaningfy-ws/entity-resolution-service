@@ -3,22 +3,20 @@ from datetime import datetime
 from typing import Any
 
 import pymongo
-from pymongo.errors import ConnectionFailure, DuplicateKeyError, OperationFailure
-
 from erspec.models.core import ClusterReference, Decision, EntityMentionIdentifier
+from pymongo.errors import ConnectionFailure, DuplicateKeyError, OperationFailure
 
 from ers.commons.adapters.decision_repository import (
     BaseDecisionRepository,
     BaseMongoDecisionRepository,
 )
 from ers.commons.domain.cursor import decode_cursor, encode_cursor
-from ers.commons.domain.data_transfer_objects import CursorPage, CursorParams
-
 from ers.commons.domain.data_transfer_objects import (
+    CursorPage,
+    CursorParams,
     DecisionFilters,
     DecisionOrdering,
 )
-
 from ers.resolution_decision_store.adapters.provisional_id import (
     derive_provisional_cluster_id,
 )
@@ -131,7 +129,6 @@ class MongoDecisionRepository(
         if sort_field == _FIELD_UPDATED_AT:
             return decision.updated_at
         return None
-
 
     async def upsert_decision(
         self,
@@ -295,10 +292,7 @@ class MongoDecisionRepository(
             cursor_condition = self._build_cursor_condition(
                 sort_field, sort_value, last_id, ascending
             )
-            if query:
-                query = {"$and": [query, cursor_condition]}
-            else:
-                query = cursor_condition
+            query = {"$and": [query, cursor_condition]} if query else cursor_condition
 
         # Fetch page_size + 1 to detect if there are more results
         fetch_limit = cursor_params.limit + 1
