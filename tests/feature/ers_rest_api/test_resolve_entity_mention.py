@@ -426,7 +426,7 @@ def batch_with_count_and_datatable(ctx, count, entity_type, datatable):
     ctx["batch_mentions"] = []
     headers = datatable[0]
     for row_values in datatable[1:]:
-        row = dict(zip(headers, row_values))
+        row = dict(zip(headers, row_values, strict=True))
         mention = {
             "source_id": row["source_id"],
             "request_id": row["request_id"],
@@ -449,7 +449,7 @@ def batch_without_count(ctx, entity_type, datatable):
     ctx["batch_mentions"] = []
     headers = datatable[0]
     for row_values in datatable[1:]:
-        row = dict(zip(headers, row_values))
+        row = dict(zip(headers, row_values, strict=True))
         mention = {
             "source_id": row["source_id"],
             "request_id": row["request_id"],
@@ -491,7 +491,7 @@ def coordinator_returns_per_mention_outcomes(ctx, datatable):
     ctx["per_mention_outcomes"] = {}
     headers = datatable[0]
     for row_values in datatable[1:]:
-        row = dict(zip(headers, row_values))
+        row = dict(zip(headers, row_values, strict=True))
         ctx["per_mention_outcomes"][row["request_id"]] = {
             "outcome": row["outcome"],
             "cluster_id": row["cluster_id"],

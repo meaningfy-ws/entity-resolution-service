@@ -325,7 +325,7 @@ def ere_emits_outcome_with_score_table(ctx, cluster_id, datatable):
     ctx["outcome_alternatives"] = []
     headers = datatable[0]
     for row_values in datatable[1:]:
-        row = dict(zip(headers, row_values))
+        row = dict(zip(headers, row_values, strict=True))
         ctx["outcome_alternatives"].append(
             {
                 "cluster_id": row["cluster_id"],
