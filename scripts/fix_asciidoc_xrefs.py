@@ -16,7 +16,6 @@ import re
 import sys
 from pathlib import Path
 
-# Primitive / built-in type names that should never be rendered as xrefs.
 PRIMITIVE_TYPES = frozenset(
     {
         "string",
@@ -38,9 +37,8 @@ PRIMITIVE_TYPES = frozenset(
     }
 )
 
-ANCHOR_RE = re.compile(r"\[#(\w+)\]")
-HEADING_AFTER_ANCHOR_RE = re.compile(r"\[#(\w+)\]\n=== (.+)")
-XREF_RE = re.compile(r"<<([^,>]*?)(?:,([^>]*?))?>>")
+_ANCHOR_HEADING_RE = re.compile(r"\[#(\w+)\]\n=== (.+)")
+_XREF_RE = re.compile(r"<<([^,>]*?)(?:,([^>]*?))?>>")
 
 
 def _sanitize(name: str) -> str:
@@ -48,63 +46,49 @@ def _sanitize(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]", "", name)
 
 
+def _strip_html_entities(name: str) -> str:
+    return name.replace("&lt;", "").replace("&gt;", "")
+
+
 def fix_file(path: Path) -> int:
+    """Fix broken xrefs in a single AsciiDoc file. Returns number of fixes."""
     text = path.read_text(encoding="utf-8")
 
-    anchors = set(ANCHOR_RE.findall(text))
-
-    # Build anchor → display-title lookup from ``[#Id]\n=== Title`` pairs.
+    # Single pass: collect anchor ids and their heading titles.
     anchor_titles: dict[str, str] = {}
-    for m in HEADING_AFTER_ANCHOR_RE.finditer(text):
-        anchor_titles[m.group(1)] = m.group(2).strip()
-
-    # Build a lookup: sanitized form → actual anchor id.
     anchor_lookup: dict[str, str] = {}
-    for a in anchors:
-        anchor_lookup[a] = a
-        anchor_lookup[_sanitize(a)] = a
+    for m in _ANCHOR_HEADING_RE.finditer(text):
+        anchor_id, title = m.group(1), m.group(2).strip()
+        anchor_titles[anchor_id] = title
+        anchor_lookup[anchor_id] = anchor_id
+        anchor_lookup[_sanitize(anchor_id)] = anchor_id
 
     fixes = 0
 
     def _replace_xref(m: re.Match) -> str:
         nonlocal fixes
-        ref = m.group(1)
-        existing_label = m.group(2)
+        ref, existing_label = m.group(1), m.group(2)
 
-        # Empty xref → dash (bodyless response).
         if not ref.strip():
             fixes += 1
             return "-"
 
-        # HTML-encoded refs (e.g. anyOf<>).
-        clean_ref = ref.replace("&lt;", "").replace("&gt;", "")
+        clean_ref = _strip_html_entities(ref)
 
-        # Primitive types → render as inline code, not xref.
-        if clean_ref in PRIMITIVE_TYPES or _sanitize(clean_ref) in PRIMITIVE_TYPES:
+        if clean_ref in PRIMITIVE_TYPES:
             fixes += 1
             return f"`{clean_ref}`"
 
-        # Resolve the target anchor id.
-        target = None
-        if ref in anchors:
-            target = ref
-        else:
-            sanitized = _sanitize(ref)
-            if sanitized in anchor_lookup:
-                target = anchor_lookup[sanitized]
-
+        # Resolve target: try exact match, then sanitized form.
+        target = anchor_lookup.get(ref) or anchor_lookup.get(_sanitize(ref))
         if target is None:
-            return m.group(0)  # No match — leave untouched.
+            return m.group(0)
 
-        # Determine display text: keep existing, or derive from heading title.
         label = existing_label or anchor_titles.get(target, target)
-
-        changed = target != ref or (not existing_label and label)
-        if changed:
-            fixes += 1
+        fixes += 1
         return f"<<{target},{label}>>"
 
-    text = XREF_RE.sub(_replace_xref, text)
+    text = _XREF_RE.sub(_replace_xref, text)
     path.write_text(text, encoding="utf-8")
     return fixes
 
