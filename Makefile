@@ -11,7 +11,8 @@ PACKAGE_NAME = ers
 COMPOSE_FILE = ${PROJECT_PATH}/infra/compose.dev.yaml
 ENV_FILE = ${PROJECT_PATH}/infra/.env
 OPENAPI_GENERATOR_IMAGE = openapitools/openapi-generator-cli:latest
-DOCS_API_PATH = ${PROJECT_PATH}/docs/api-reference
+DOCS_API_REL = docs/api-docs
+DOCS_API_PATH = ${PROJECT_PATH}/${DOCS_API_REL}
 DOCS_TEMPLATE_PATH = ${PROJECT_PATH}/docs/templates/asciidoc
 ASCIIDOC_PROPS = useMethodAndPath=true,useIntroduction=true,useTableTitles=true,skipExamples=true
 
@@ -37,7 +38,7 @@ help: ## Display available targets
 	@ echo "    build                - Build the package distribution"
 	@ echo "    seed-db              - Seed the database with mock data"
 	@ echo "    openapi              - Generate OpenAPI schemas into /resources folder"
-	@ echo "    generate-api-docs    - Generate AsciiDoc API reference from OpenAPI schemas"
+	@ echo "    api-docs    		 - Generate AsciiDoc API reference from OpenAPI schemas"
 	@ echo ""
 	@ echo -e "  $(BUILD_PRINT)Code Quality (mutating):$(END_BUILD_PRINT)"
 	@ echo "    format               - Format code with Ruff"
@@ -112,40 +113,33 @@ openapi: ## Generate OpenAPI schema into resources/
 	@ poetry run python -m scripts.export_openapi
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) OpenAPI schemas generated$(END_BUILD_PRINT)"
 
-generate-api-docs: ## Generate AsciiDoc API reference from OpenAPI schemas
+# Usage: $(call run-openapi-asciidoc,<schema-file>,<output-subdir>)
+define run-openapi-asciidoc
+	@ MSYS_NO_PATHCONV=1 docker run --rm \
+		-v "$(PROJECT_PATH)/resources:/input" \
+		-v "$(DOCS_API_PATH)/$(2):/output" \
+		-v "$(DOCS_TEMPLATE_PATH):/templates" \
+		$(OPENAPI_GENERATOR_IMAGE) generate \
+		-i /input/$(1) \
+		-g asciidoc \
+		-o /output \
+		-t /templates \
+		--additional-properties=$(ASCIIDOC_PROPS) \
+		--remove-operation-id-prefix \
+		--skip-validate-spec \
+		--inline-schema-name-mappings Location_inner=LocationElement
+endef
+
+api-docs: ## Generate AsciiDoc API reference from OpenAPI schemas
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Generating API reference documentation$(END_BUILD_PRINT)"
 	@ mkdir -p $(DOCS_API_PATH)/ers $(DOCS_API_PATH)/curation
-	@ MSYS_NO_PATHCONV=1 docker run --rm \
-		-v "$(PROJECT_PATH)/resources:/input" \
-		-v "$(DOCS_API_PATH)/ers:/output" \
-		-v "$(DOCS_TEMPLATE_PATH):/templates" \
-		$(OPENAPI_GENERATOR_IMAGE) generate \
-		-i /input/ers-openapi-schema.json \
-		-g asciidoc \
-		-o /output \
-		-t /templates \
-		--additional-properties=$(ASCIIDOC_PROPS) \
-		--remove-operation-id-prefix \
-		--skip-validate-spec \
-		--inline-schema-name-mappings Location_inner=LocationElement
-	@ MSYS_NO_PATHCONV=1 docker run --rm \
-		-v "$(PROJECT_PATH)/resources:/input" \
-		-v "$(DOCS_API_PATH)/curation:/output" \
-		-v "$(DOCS_TEMPLATE_PATH):/templates" \
-		$(OPENAPI_GENERATOR_IMAGE) generate \
-		-i /input/curation-openapi-schema.json \
-		-g asciidoc \
-		-o /output \
-		-t /templates \
-		--additional-properties=$(ASCIIDOC_PROPS) \
-		--remove-operation-id-prefix \
-		--skip-validate-spec \
-		--inline-schema-name-mappings Location_inner=LocationElement
+	$(call run-openapi-asciidoc,ers-openapi-schema.json,ers)
+	$(call run-openapi-asciidoc,curation-openapi-schema.json,curation)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Fixing cross-references$(END_BUILD_PRINT)"
-	@ poetry run python -m scripts.fix_asciidoc_xrefs \
-		docs/api-reference/ers/index.adoc \
-		docs/api-reference/curation/index.adoc
-	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) API reference docs generated at docs/modules/ROOT/pages/api-reference/$(END_BUILD_PRINT)"
+	@ cd $(PROJECT_PATH) && poetry run python -m scripts.fix_asciidoc_xrefs \
+		$(DOCS_API_REL)/ers/index.adoc \
+		$(DOCS_API_REL)/curation/index.adoc
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) API reference docs generated at $(DOCS_API_REL)/$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------
 # Code quality — mutating targets

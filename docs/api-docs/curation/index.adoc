@@ -2668,7 +2668,7 @@ Public user representation (no password).
 | loc
 | X
 | 
-|  `List` of <<LocationElement,LocationElement>>
+|  `List` of <<LocationElement>>
 | 
 |     
 

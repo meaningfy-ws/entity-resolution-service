@@ -1127,7 +1127,7 @@ PROVISIONAL — the cluster ID was derived deterministically (singleton).
 | loc
 | X
 | 
-|  `List` of <<LocationElement,LocationElement>>
+|  `List` of <<LocationElement>>
 | 
 |     
 
