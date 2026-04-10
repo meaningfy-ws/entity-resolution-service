@@ -2,6 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "ERS REST API",
+    "description": "The Entity Resolution Service (ERS) REST API provides endpoints for resolving entity mentions to canonical cluster identifiers, looking up existing cluster assignments, and synchronising assignment deltas. It serves as the primary integration point for external systems that need to resolve, deduplicate, or track entity mentions across multiple sources.",
     "version": "0.1.0"
   },
   "paths": {
