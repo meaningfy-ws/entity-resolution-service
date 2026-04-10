@@ -11,7 +11,7 @@ PACKAGE_NAME = ers
 COMPOSE_FILE = ${PROJECT_PATH}/infra/compose.dev.yaml
 ENV_FILE = ${PROJECT_PATH}/infra/.env
 OPENAPI_GENERATOR_IMAGE = openapitools/openapi-generator-cli:latest
-DOCS_API_PATH = ${PROJECT_PATH}/docs/modules/ROOT/pages/api-reference
+DOCS_API_PATH = ${PROJECT_PATH}/docs/api-reference
 DOCS_TEMPLATE_PATH = ${PROJECT_PATH}/docs/templates/asciidoc
 ASCIIDOC_PROPS = useMethodAndPath=true,useIntroduction=true,useTableTitles=true,skipExamples=true
 
@@ -143,8 +143,8 @@ generate-api-docs: ## Generate AsciiDoc API reference from OpenAPI schemas
 		--inline-schema-name-mappings Location_inner=LocationElement
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Fixing cross-references$(END_BUILD_PRINT)"
 	@ poetry run python -m scripts.fix_asciidoc_xrefs \
-		docs/modules/ROOT/pages/api-reference/ers/index.adoc \
-		docs/modules/ROOT/pages/api-reference/curation/index.adoc
+		docs/api-reference/ers/index.adoc \
+		docs/api-reference/curation/index.adoc
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) API reference docs generated at docs/modules/ROOT/pages/api-reference/$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------
