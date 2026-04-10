@@ -2125,7 +2125,7 @@ Standard error response body for OpenAPI documentation.
 
 
 [#LocationElement]
-=== 
+=== LocationElement
 
 
 
@@ -2668,7 +2668,7 @@ Public user representation (no password).
 | loc
 | X
 | 
-|  `List` of <<LocationElement>>
+|  `List` of <<LocationElement,LocationElement>>
 | 
 |     
 

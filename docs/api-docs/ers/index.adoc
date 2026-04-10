@@ -944,7 +944,7 @@ Response model for the health endpoint.
 
 
 [#LocationElement]
-=== 
+=== LocationElement
 
 
 
@@ -1127,7 +1127,7 @@ PROVISIONAL — the cluster ID was derived deterministically (singleton).
 | loc
 | X
 | 
-|  `List` of <<LocationElement>>
+|  `List` of <<LocationElement,LocationElement>>
 | 
 |     
 

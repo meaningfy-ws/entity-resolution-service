@@ -5,7 +5,7 @@
     {{#model}}
 
 [#{{classname}}]
-=== {{title}}
+=== {{#title}}{{title}}{{/title}}{{^title}}{{classname}}{{/title}}
 
 {{unescapedDescription}}
 
