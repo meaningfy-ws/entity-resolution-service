@@ -12,7 +12,7 @@ COMPOSE_FILE = ${PROJECT_PATH}/infra/compose.dev.yaml
 ENV_FILE = ${PROJECT_PATH}/infra/.env
 OPENAPI_GENERATOR_IMAGE = openapitools/openapi-generator-cli:latest
 DOCS_API_PATH = ${PROJECT_PATH}/docs/modules/ROOT/pages/api-reference
-ASCIIDOC_PROPS = useMethodAndPath=true,useIntroduction=true,useTableTitles=true
+ASCIIDOC_PROPS = useMethodAndPath=true,useIntroduction=true,useTableTitles=true,skipExamples=true,infoUrl=
 
 ICON_DONE = [✔]
 ICON_ERROR = [x]
