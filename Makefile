@@ -10,6 +10,9 @@ BUILD_PATH = ${PROJECT_PATH}/dist
 PACKAGE_NAME = ers
 COMPOSE_FILE = ${PROJECT_PATH}/infra/compose.dev.yaml
 ENV_FILE = ${PROJECT_PATH}/infra/.env
+OPENAPI_GENERATOR_IMAGE = openapitools/openapi-generator-cli:latest
+DOCS_API_PATH = ${PROJECT_PATH}/docs/modules/ROOT/pages/api-reference
+ASCIIDOC_PROPS = useMethodAndPath=true,useIntroduction=true,useTableTitles=true
 
 ICON_DONE = [✔]
 ICON_ERROR = [x]
@@ -22,7 +25,7 @@ COV_FLAGS = --cov=src --cov-report=term-missing --cov-report=xml:coverage.xml --
 #-----------------------------------------------------------------------------
 # Dev commands
 #-----------------------------------------------------------------------------
-.PHONY: help install-poetry install lock build seed-db openapi
+.PHONY: help install-poetry install lock build seed-db openapi generate-api-docs
 
 help: ## Display available targets
 	@ echo -e "$(BUILD_PRINT)Available targets:$(END_BUILD_PRINT)"
@@ -33,6 +36,7 @@ help: ## Display available targets
 	@ echo "    build                - Build the package distribution"
 	@ echo "    seed-db              - Seed the database with mock data"
 	@ echo "    openapi              - Generate OpenAPI schemas into /resources folder"
+	@ echo "    generate-api-docs    - Generate AsciiDoc API reference from OpenAPI schemas"
 	@ echo ""
 	@ echo -e "  $(BUILD_PRINT)Code Quality (mutating):$(END_BUILD_PRINT)"
 	@ echo "    format               - Format code with Ruff"
@@ -106,6 +110,35 @@ openapi: ## Generate OpenAPI schema into resources/
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Generating OpenAPI schemas$(END_BUILD_PRINT)"
 	@ poetry run python -m scripts.export_openapi
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) OpenAPI schemas generated$(END_BUILD_PRINT)"
+
+generate-api-docs: ## Generate AsciiDoc API reference from OpenAPI schemas
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Generating API reference documentation$(END_BUILD_PRINT)"
+	@ mkdir -p $(DOCS_API_PATH)/ers $(DOCS_API_PATH)/curation
+	@ MSYS_NO_PATHCONV=1 docker run --rm \
+		-v "$(PROJECT_PATH)/resources:/input" \
+		-v "$(DOCS_API_PATH)/ers:/output" \
+		$(OPENAPI_GENERATOR_IMAGE) generate \
+		-i /input/ers-openapi-schema.json \
+		-g asciidoc \
+		-o /output \
+		--additional-properties=$(ASCIIDOC_PROPS) \
+		--remove-operation-id-prefix \
+		--skip-validate-spec \
+		--inline-schema-name-mappings Location_inner=LocationElement \
+		--model-name-mappings EntityMentionIdentifier-Input=EntityMentionIdentifierRequest,EntityMentionIdentifier-Output=EntityMentionIdentifierResponse
+	@ MSYS_NO_PATHCONV=1 docker run --rm \
+		-v "$(PROJECT_PATH)/resources:/input" \
+		-v "$(DOCS_API_PATH)/curation:/output" \
+		$(OPENAPI_GENERATOR_IMAGE) generate \
+		-i /input/curation-openapi-schema.json \
+		-g asciidoc \
+		-o /output \
+		--additional-properties=$(ASCIIDOC_PROPS) \
+		--remove-operation-id-prefix \
+		--skip-validate-spec \
+		--inline-schema-name-mappings Location_inner=LocationElement \
+		--model-name-mappings CursorPage_DecisionSummary_=DecisionSummaryPage,CursorPage_UserActionSummary_=UserActionSummaryPage,PaginatedResult_CanonicalEntityPreview_=CanonicalEntityPreviewPage,PaginatedResult_UserResponse_=UserResponsePage
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) API reference docs generated at docs/modules/ROOT/pages/api-reference/$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------
 # Code quality — mutating targets
