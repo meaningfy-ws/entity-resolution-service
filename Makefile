@@ -12,7 +12,8 @@ COMPOSE_FILE = ${PROJECT_PATH}/infra/compose.dev.yaml
 ENV_FILE = ${PROJECT_PATH}/infra/.env
 OPENAPI_GENERATOR_IMAGE = openapitools/openapi-generator-cli:latest
 DOCS_API_PATH = ${PROJECT_PATH}/docs/modules/ROOT/pages/api-reference
-ASCIIDOC_PROPS = useMethodAndPath=true,useIntroduction=true,useTableTitles=true,skipExamples=true,infoUrl=
+DOCS_TEMPLATE_PATH = ${PROJECT_PATH}/docs/templates/asciidoc
+ASCIIDOC_PROPS = useMethodAndPath=true,useIntroduction=true,useTableTitles=true,skipExamples=true
 
 ICON_DONE = [✔]
 ICON_ERROR = [x]
@@ -117,27 +118,33 @@ generate-api-docs: ## Generate AsciiDoc API reference from OpenAPI schemas
 	@ MSYS_NO_PATHCONV=1 docker run --rm \
 		-v "$(PROJECT_PATH)/resources:/input" \
 		-v "$(DOCS_API_PATH)/ers:/output" \
+		-v "$(DOCS_TEMPLATE_PATH):/templates" \
 		$(OPENAPI_GENERATOR_IMAGE) generate \
 		-i /input/ers-openapi-schema.json \
 		-g asciidoc \
 		-o /output \
+		-t /templates \
 		--additional-properties=$(ASCIIDOC_PROPS) \
 		--remove-operation-id-prefix \
 		--skip-validate-spec \
-		--inline-schema-name-mappings Location_inner=LocationElement \
-		--model-name-mappings EntityMentionIdentifier-Input=EntityMentionIdentifierRequest,EntityMentionIdentifier-Output=EntityMentionIdentifierResponse
+		--inline-schema-name-mappings Location_inner=LocationElement
 	@ MSYS_NO_PATHCONV=1 docker run --rm \
 		-v "$(PROJECT_PATH)/resources:/input" \
 		-v "$(DOCS_API_PATH)/curation:/output" \
+		-v "$(DOCS_TEMPLATE_PATH):/templates" \
 		$(OPENAPI_GENERATOR_IMAGE) generate \
 		-i /input/curation-openapi-schema.json \
 		-g asciidoc \
 		-o /output \
+		-t /templates \
 		--additional-properties=$(ASCIIDOC_PROPS) \
 		--remove-operation-id-prefix \
 		--skip-validate-spec \
-		--inline-schema-name-mappings Location_inner=LocationElement \
-		--model-name-mappings CursorPage_DecisionSummary_=DecisionSummaryPage,CursorPage_UserActionSummary_=UserActionSummaryPage,PaginatedResult_CanonicalEntityPreview_=CanonicalEntityPreviewPage,PaginatedResult_UserResponse_=UserResponsePage
+		--inline-schema-name-mappings Location_inner=LocationElement
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Fixing cross-references$(END_BUILD_PRINT)"
+	@ poetry run python -m scripts.fix_asciidoc_xrefs \
+		docs/modules/ROOT/pages/api-reference/ers/index.adoc \
+		docs/modules/ROOT/pages/api-reference/curation/index.adoc
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) API reference docs generated at docs/modules/ROOT/pages/api-reference/$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------
