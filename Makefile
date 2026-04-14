@@ -10,6 +10,9 @@ BUILD_PATH = ${PROJECT_PATH}/dist
 PACKAGE_NAME = ers
 COMPOSE_FILE = ${PROJECT_PATH}/infra/compose.dev.yaml
 ENV_FILE = ${PROJECT_PATH}/infra/.env
+# TODO: bump to v7.22.0 once released — v7.21.0 drops descriptions from nullable
+#       (anyOf) properties in the asciidoc generator. The fix is in the 7.22.0-SNAPSHOT
+#       but no stable release or Docker image exists yet.
 OPENAPI_GENERATOR_IMAGE = openapitools/openapi-generator-cli:v7.21.0
 DOCS_API_REL ?= docs/api-docs
 DOCS_API_PATH = ${PROJECT_PATH}/${DOCS_API_REL}
