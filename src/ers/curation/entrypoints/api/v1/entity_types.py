@@ -9,7 +9,7 @@ from ers.rdf_mention_parser.domain.rdf_mapping_config import RDFMappingConfig
 router = APIRouter(prefix="/curation/entity-types", tags=["Entity Types"])
 
 
-@router.get("", response_model=list[str])
+@router.get("")
 async def list_entity_types(
     _user: VerifiedUser,
     rdf_config: Annotated[RDFMappingConfig, Depends(get_rdf_config)],
