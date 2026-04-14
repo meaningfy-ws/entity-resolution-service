@@ -10,8 +10,8 @@ BUILD_PATH = ${PROJECT_PATH}/dist
 PACKAGE_NAME = ers
 COMPOSE_FILE = ${PROJECT_PATH}/infra/compose.dev.yaml
 ENV_FILE = ${PROJECT_PATH}/infra/.env
-OPENAPI_GENERATOR_IMAGE = openapitools/openapi-generator-cli:latest
-DOCS_API_REL = docs/api-docs
+OPENAPI_GENERATOR_IMAGE = openapitools/openapi-generator-cli:v7.21.0
+DOCS_API_REL ?= docs/api-docs
 DOCS_API_PATH = ${PROJECT_PATH}/${DOCS_API_REL}
 DOCS_TEMPLATE_PATH = ${PROJECT_PATH}/docs/templates/asciidoc
 ASCIIDOC_PROPS = useMethodAndPath=true,useIntroduction=true,useTableTitles=true,skipExamples=true
@@ -39,6 +39,7 @@ help: ## Display available targets
 	@ echo "    seed-db              - Seed the database with mock data"
 	@ echo "    openapi              - Generate OpenAPI schemas into /resources folder"
 	@ echo "    api-docs    		 - Generate AsciiDoc API reference from OpenAPI schemas"
+	@ echo "                           Override output path: make api-docs DOCS_API_REL=path"
 	@ echo ""
 	@ echo -e "  $(BUILD_PRINT)Code Quality (mutating):$(END_BUILD_PRINT)"
 	@ echo "    format               - Format code with Ruff"
@@ -130,7 +131,7 @@ define run-openapi-asciidoc
 		--inline-schema-name-mappings Location_inner=LocationElement
 endef
 
-api-docs: ## Generate AsciiDoc API reference from OpenAPI schemas
+api-docs: ## Generate AsciiDoc API reference from OpenAPI schemas (override: DOCS_API_REL=path)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Generating API reference documentation$(END_BUILD_PRINT)"
 	@ mkdir -p $(DOCS_API_PATH)/ers $(DOCS_API_PATH)/curation
 	$(call run-openapi-asciidoc,ers-openapi-schema.json,ers)
