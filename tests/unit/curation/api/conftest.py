@@ -116,6 +116,7 @@ def app(
 ) -> FastAPI:
     # monkeypatch.setenv calls MUST come before create_app() — properties are
     # evaluated at access time, so env vars must be set before FastAPI reads them.
+    monkeypatch.setenv("ENVIRONMENT", "development")
     monkeypatch.setenv("APP_NAME", "Test ERS")
     monkeypatch.setenv("DEBUG", "true")
     app = create_app()

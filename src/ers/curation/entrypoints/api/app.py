@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 
 from ers import config
+from ers.commons.adapters.config_validation import validate_production_config
 from ers.commons.adapters.mongo_client import MongoClientManager
 from ers.commons.adapters.redis_client import RedisConnectionConfig, RedisEREClient
 from ers.curation.entrypoints.api.exception_handlers import register_exception_handlers
@@ -77,6 +78,8 @@ async def _seed_admin_user(db: object) -> None:
 
 def create_app() -> FastAPI:
     """Application factory for the FastAPI instance."""
+    validate_production_config(config)
+
     app = FastAPI(
         title=config.APP_NAME,
         description=(

@@ -1,12 +1,27 @@
 from ers import (
     AdminConfig,
     CurationAppConfig,
+    EnvironmentConfig,
     JWTConfig,
     MongoDBConfig,
     ObservabilityConfig,
     RDFMentionParserConfig,
     config,
 )
+
+
+class TestEnvironmentConfig:
+    def test_environment_default_is_production(self, monkeypatch):
+        monkeypatch.delenv("ENVIRONMENT", raising=False)
+        assert EnvironmentConfig().ENVIRONMENT == "production"
+
+    def test_environment_from_env(self, monkeypatch):
+        monkeypatch.setenv("ENVIRONMENT", "staging")
+        assert EnvironmentConfig().ENVIRONMENT == "staging"
+
+    def test_environment_is_lowercased(self, monkeypatch):
+        monkeypatch.setenv("ENVIRONMENT", "Production")
+        assert EnvironmentConfig().ENVIRONMENT == "production"
 
 
 class TestAppConfig:

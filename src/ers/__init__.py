@@ -8,6 +8,12 @@ from ers.commons.adapters.config_resolver import env_property
 load_dotenv()
 
 
+class EnvironmentConfig:
+    @env_property(default_value="production")
+    def ENVIRONMENT(self, config_value: str) -> str:
+        return config_value.lower()
+
+
 class CurationAppConfig:
     @env_property(default_value="Curation REST API")
     def APP_NAME(self, config_value: str) -> str:
@@ -179,6 +185,7 @@ class ResolutionCoordinatorConfig:
 
 
 class ERSConfigResolver(
+    EnvironmentConfig,
     CurationAppConfig,
     JWTConfig,
     AdminConfig,
