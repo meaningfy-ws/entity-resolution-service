@@ -2,6 +2,8 @@
 
 import logging
 
+from ers import ERSConfigResolver
+
 logger = logging.getLogger(__name__)
 
 INSECURE_DEFAULTS: dict[str, str] = {
@@ -19,7 +21,7 @@ class InsecureConfigurationError(SystemExit):
     """
 
 
-def validate_production_config(config: object) -> None:
+def validate_production_config(config: ERSConfigResolver) -> None:
     """Check config properties against a blocklist of known insecure defaults.
 
     Args:
