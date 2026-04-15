@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-_INSECURE_DEFAULTS: dict[str, str] = {
+INSECURE_DEFAULTS: dict[str, str] = {
     "JWT_SECRET_KEY": "change-me-in-production",
     "ADMIN_PASSWORD": "changeme",
     "ADMIN_EMAIL": "admin@ers.local",
@@ -31,7 +31,7 @@ def validate_production_config(config: object) -> None:
     """
     violations = [
         name
-        for name, insecure_value in _INSECURE_DEFAULTS.items()
+        for name, insecure_value in INSECURE_DEFAULTS.items()
         if getattr(config, name) == insecure_value
     ]
     if not violations:

@@ -4,6 +4,7 @@ import pytest
 
 from ers import ERSConfigResolver
 from ers.commons.adapters.config_validation import (
+    INSECURE_DEFAULTS,
     InsecureConfigurationError,
     validate_production_config,
 )
@@ -68,3 +69,16 @@ class TestValidateProductionConfig:
 
     def test_insecure_configuration_error_is_system_exit(self):
         assert issubclass(InsecureConfigurationError, SystemExit)
+
+    def test_insecure_defaults_match_actual_config_defaults(self, monkeypatch):
+        """Guard against drift between _INSECURE_DEFAULTS and the real config defaults."""
+        for name in INSECURE_DEFAULTS:
+            monkeypatch.delenv(name, raising=False)
+
+        config = ERSConfigResolver()
+        for name, expected in INSECURE_DEFAULTS.items():
+            actual = getattr(config, name)
+            assert actual == expected, (
+                f"_INSECURE_DEFAULTS[{name!r}] is {expected!r} but the config "
+                f"default resolved to {actual!r} — update one to match the other"
+            )
