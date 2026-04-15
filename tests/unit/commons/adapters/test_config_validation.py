@@ -67,8 +67,8 @@ class TestValidateProductionConfig:
 
         assert "Insecure default values" not in caplog.text
 
-    def test_insecure_configuration_error_is_system_exit(self):
-        assert issubclass(InsecureConfigurationError, SystemExit)
+    def test_insecure_configuration_error_is_runtime_error(self):
+        assert issubclass(InsecureConfigurationError, RuntimeError)
 
     def test_insecure_defaults_match_actual_config_defaults(self, monkeypatch):
         """Guard against drift between _INSECURE_DEFAULTS and the real config defaults."""

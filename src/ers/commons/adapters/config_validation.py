@@ -13,12 +13,8 @@ INSECURE_DEFAULTS: dict[str, str] = {
 }
 
 
-class InsecureConfigurationError(SystemExit):
-    """Raised when production starts with known insecure default values.
-
-    Inherits ``SystemExit`` so it cannot be swallowed by broad
-    ``except Exception`` handlers in framework internals.
-    """
+class InsecureConfigurationError(RuntimeError):
+    """Raised when production starts with known insecure default values."""
 
 
 def validate_production_config(config: ERSConfigResolver) -> None:
